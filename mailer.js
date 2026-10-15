@@ -333,6 +333,10 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       to         : email,
       subject,
       priority   : 'normal',
+      headers    : {
+        'X-Mailer': 'Club-ARSII-IIT-Enrollment',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+      },
       text       : textContent,
       html       : htmlContent,
       attachments: [

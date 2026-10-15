@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { insertAdhesion, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById } = require('./db');
+const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById } = require('./db');
 const { sendWelcomeEmail, buildWelcomeEmailHtml } = require('./mailer');
 
 // Chargement basique d'un fichier .env s'il existe
@@ -88,7 +88,7 @@ const server = http.createServer((req, res) => {
       if (body.length > 1e6) req.destroy();
     });
 
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const data = JSON.parse(body);
 
@@ -111,14 +111,37 @@ const server = http.createServer((req, res) => {
           return sendJson(res, 400, { success: false, errors });
         }
 
-        // Vérification de doublon d'email
-        const existing = getAdhesionByEmail(data.email.trim());
-        if (existing) {
+        // Conditions strictes : interdiction de remplir deux fois avec le même email OU le même numéro de téléphone
+        const existingEmail = getAdhesionByEmail(data.email.trim());
+        const existingPhone = getAdhesionByPhone(data.telephone);
+
+        if (existingEmail && existingPhone) {
+          console.warn(`[Base de données] Rejet doublon (Email et Téléphone déjà enregistrés) : ${data.email} / ${data.telephone}`);
           return sendJson(res, 409, {
             success: false,
-            duplicate: true,
-            message: '⛔ Cette adresse email est déjà enregistrée dans notre base de données. Chaque personne ne peut s\'adhérer qu\'une seule fois.',
-            id: existing.id,
+            duplicateEmail: true,
+            duplicatePhone: true,
+            message: '⛔ Cet email et ce numéro sont déjà inscrits.',
+          });
+        }
+
+        if (existingEmail) {
+          console.warn(`[Base de données] Rejet doublon Email : ${data.email} (déjà utilisé par ID #${existingEmail.id})`);
+          return sendJson(res, 409, {
+            success: false,
+            duplicateEmail: true,
+            message: '⛔ Cet email est déjà inscrit.',
+            id: existingEmail.id,
+          });
+        }
+
+        if (existingPhone) {
+          console.warn(`[Base de données] Rejet doublon Téléphone : ${data.telephone} (déjà utilisé par ID #${existingPhone.id})`);
+          return sendJson(res, 409, {
+            success: false,
+            duplicatePhone: true,
+            message: '⛔ Ce numéro est déjà inscrit.',
+            id: existingPhone.id,
           });
         }
 
@@ -138,18 +161,34 @@ const server = http.createServer((req, res) => {
 
         console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${data.email}) - ID #${result.id}`);
 
-        // Envoi automatique de l'email de bienvenue avec la charte ARSII IIT
-        sendWelcomeEmail({
-          prenom: data.prenom.trim(),
-          nom: data.nom.trim(),
-          email: data.email.trim(),
-        }).catch(emailErr => {
-          console.error('[Email] Échec envoi en arrière-plan :', emailErr);
-        });
+        // Envoi automatique et garanti de l'email de confirmation à la personne concernée
+        let emailSent = false;
+        let emailError = null;
+        try {
+          const emailRes = await sendWelcomeEmail({
+            prenom: data.prenom.trim(),
+            nom: data.nom.trim(),
+            email: data.email.trim(),
+          });
+          emailSent = !!emailRes.success;
+          if (!emailSent) {
+            emailError = emailRes.error;
+            console.error(`[Email] Erreur lors de l'envoi à ${data.email} :`, emailError);
+          } else {
+            console.log(`[Email] ✅ Email de confirmation bien reçu/délivré pour ${data.email} (ID: ${emailRes.messageId})`);
+          }
+        } catch (emailErr) {
+          console.error('[Email] Échec critique envoi :', emailErr);
+          emailError = emailErr.message;
+        }
 
         return sendJson(res, 201, {
           success: true,
-          message: 'Candidature enregistrée avec succès dans la base de données ! Un email de bienvenue a été envoyé.',
+          emailSent,
+          emailError,
+          message: emailSent
+            ? 'Candidature enregistrée ! Un email de confirmation a été envoyé à votre adresse email.'
+            : 'Candidature enregistrée avec succès dans la base de données.',
           id: result.id,
         });
       } catch (err) {

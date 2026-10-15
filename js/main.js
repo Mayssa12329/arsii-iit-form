@@ -7,10 +7,15 @@
 
   /* ---------- CONFIGURATION ----------
      L'envoi se fait par défaut vers notre base de données locale (/api/adhesions).
-     Si une URL Google Apps Script externe est fournie, elle sera utilisée. */
+     Si le site est ouvert depuis un autre port local (ex: Live Server 5500) ou en local, on cible le port 3000 */
+  const isLocalhostOtherPort = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000';
+  const isFileProtocol = window.location.protocol === 'file:';
+  const defaultApiUrl = (isLocalhostOtherPort || isFileProtocol)
+    ? 'http://localhost:3000/api/adhesions'
+    : '/api/adhesions';
+
   const CONFIG = {
-    ENDPOINT: '/api/adhesions',
-    MIN_SUBMIT_DELAY_MS: 1500, // anti-bot : temps minimum avant l'envoi
+    ENDPOINT: defaultApiUrl,
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -230,7 +235,10 @@
 
       if (!response.ok) {
         const errorMsg = (resData.errors && resData.errors.join(' ')) || resData.message || 'Erreur lors de l’enregistrement.';
-        throw new Error(errorMsg);
+        const err = new Error(errorMsg);
+        if (resData.duplicatePhone) err.duplicatePhone = true;
+        if (resData.duplicateEmail) err.duplicateEmail = true;
+        throw err;
       }
 
       return resData;
@@ -262,30 +270,45 @@
 
     const data = collectData();
 
-    // Anti-spam : champ piège rempli ou envoi trop rapide → on fait semblant de réussir
-    if (data.website || Date.now() - loadedAt < CONFIG.MIN_SUBMIT_DELAY_MS) {
+    // Anti-spam strict : champ piège caché honeypot uniquement
+    if (data.website) {
       return showSuccess();
     }
 
     setLoading(true);
     try {
       const res = await send(data);
-      if (res && res.duplicate) {
-        // BLOC STRICT : afficher une erreur claire, ne pas montrer la page de succès
-        setStatus('⛔ Cette adresse email est déjà enregistrée dans notre base de données. Vous ne pouvez adhérer qu\'une seule fois.', true);
-        // Scroll vers le champ email et le surligner en rouge
-        const emailField = document.querySelector('#email');
-        if (emailField) {
-          emailField.closest('.field')?.classList.add('invalid');
-          emailField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          emailField.focus();
-        }
-      } else {
-        showSuccess(null);
-      }
+      const msg = (res && res.emailSent)
+        ? `Un email de confirmation officiel avec tous les détails du Club vient d'être envoyé à ${data.email}. (Pensez à vérifier vos spams ou courriers indésirables).`
+        : `Merci pour votre inscription ! Votre adhésion a bien été enregistrée.`;
+      showSuccess(msg);
     } catch (err) {
       console.error(err);
       setStatus(err.message || 'Une erreur est survenue. Vérifiez votre connexion et réessayez.', true);
+
+      if (err.duplicatePhone) {
+        const telField = document.querySelector('#telephone');
+        if (telField) {
+          const wrapper = telField.closest('.field');
+          wrapper?.classList.add('invalid');
+          const errEl = wrapper?.querySelector('.error');
+          if (errEl) errEl.textContent = 'Ce numéro est déjà inscrit.';
+          telField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          telField.focus();
+        }
+      }
+
+      if (err.duplicateEmail) {
+        const emailField = document.querySelector('#email');
+        if (emailField) {
+          const wrapper = emailField.closest('.field');
+          wrapper?.classList.add('invalid');
+          const errEl = wrapper?.querySelector('.error');
+          if (errEl) errEl.textContent = 'Cet email est déjà inscrit.';
+          emailField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          emailField.focus();
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -313,5 +336,26 @@
         localStorage.setItem('arsii_submitted_msg', customSubtitle);
       }
     } catch (e) {}
+  }
+
+  /* Bouton pour inscrire une autre personne ou soumettre une nouvelle adhésion */
+  const btnAnotherMember = $('#btnAnotherMember');
+  if (btnAnotherMember) {
+    btnAnotherMember.addEventListener('click', () => {
+      form.reset();
+      $$('.field', form).forEach(f => f.classList.remove('invalid'));
+      $$('.error', form).forEach(e => e.textContent = '');
+      const counter = $('#counter');
+      if (counter) counter.textContent = '0/500';
+      localStorage.removeItem('arsii_submitted');
+      localStorage.removeItem('arsii_submitted_email');
+      localStorage.removeItem('arsii_submitted_msg');
+      document.documentElement.classList.remove('is-submitted');
+      successEl.hidden = true;
+      form.hidden = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const firstInput = form.elements['nom'];
+      if (firstInput) firstInput.focus();
+    });
   }
 })();

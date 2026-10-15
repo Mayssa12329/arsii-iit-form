@@ -83,6 +83,21 @@ function insertAdhesion(data) {
   };
 }
 
+function cleanPhone(phone) {
+  if (!phone) return '';
+  return String(phone)
+    .replace(/[\s.\-()]/g, '')
+    .replace(/^(\+|00)216/, '')
+    .trim();
+}
+
+function getAdhesionByPhone(phone) {
+  const target = cleanPhone(phone);
+  if (!target) return null;
+  const rows = getAllAdhesions();
+  return rows.find(r => cleanPhone(r.telephone) === target) || null;
+}
+
 function getAdhesionByEmail(email) {
   const stmt = db.prepare('SELECT * FROM adhesions WHERE email = ? LIMIT 1');
   return stmt.get(email.toLowerCase());
@@ -141,9 +156,43 @@ function clearAllAdhesions() {
   syncCsvBackup();
 }
 
+function saveOrUpdateAdhesion(data) {
+  const existing = getAdhesionByEmail(data.email.trim());
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE adhesions SET
+        nom = ?, prenom = ?, telephone = ?, niveau = ?, filiere = ?, annee = ?, motivation = ?, interets = ?, source = ?, created_at = ?
+      WHERE id = ?
+    `);
+    const updatedAt = new Date().toISOString();
+    stmt.run(
+      data.nom,
+      data.prenom,
+      data.telephone,
+      data.niveau,
+      data.filiere,
+      data.annee,
+      data.motivation || '',
+      data.interets || '',
+      data.source || '',
+      updatedAt,
+      existing.id
+    );
+    syncJsonBackup();
+    syncCsvBackup();
+    return { id: existing.id, isUpdate: true, created_at: updatedAt };
+  } else {
+    const res = insertAdhesion(data);
+    return { id: res.id, isUpdate: false, created_at: res.created_at };
+  }
+}
+
 module.exports = {
   db,
   insertAdhesion,
+  saveOrUpdateAdhesion,
+  cleanPhone,
+  getAdhesionByPhone,
   getAdhesionByEmail,
   getAllAdhesions,
   deleteAdhesionById,

@@ -228,10 +228,16 @@
     <section id="success" class="card success" hidden tabindex="-1">
       <svg class="success__icon"><use href="#i-check"/></svg>
       <h2>Merci, ta candidature est envoyée !</h2>
-      <p>Nous revenons vers toi très vite par email. En attendant, retrouve-nous sur Instagram.</p>
-      <a class="btn btn--ghost" href="https://www.instagram.com/arsii_iit/" target="_blank" rel="noopener noreferrer">
-        <svg><use href="#i-insta"/></svg><span>@arsii_iit</span>
-      </a>
+      <p id="successMessage">Un email de confirmation officiel avec tous les détails du Club ARSII IIT vient de t'être envoyé. En attendant, rejoins-nous sur Instagram !</p>
+      <div style="display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:16px;">
+        <button type="button" class="btn" id="btnAnotherMember" style="min-width:auto;padding:12px 24px;font-size:0.95rem;">
+          <svg style="width:18px;height:18px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Inscrire une autre personne
+        </button>
+        <a class="btn btn--ghost" href="https://www.instagram.com/arsii_iit/" target="_blank" rel="noopener noreferrer">
+          <svg><use href="#i-insta"/></svg><span>@arsii_iit</span>
+        </a>
+      </div>
     </section>
   </main>
 
