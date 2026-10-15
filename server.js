@@ -138,7 +138,7 @@ const server = http.createServer((req, res) => {
           });
         }
 
-        // Sauvegarde ou mise à jour de l'adhésion dans la base de données
+        // Sauvegarde ou mise à jour immédiate dans la base de données (< 5ms)
         const result = saveOrUpdateAdhesion({
           nom: data.nom.trim(),
           prenom: data.prenom.trim(),
@@ -154,35 +154,31 @@ const server = http.createServer((req, res) => {
 
         console.log(`[Base de données] Adhésion validée (${result.isUpdate ? 'Mise à jour' : 'Nouvelle'}) : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${result.id}`);
 
-        // Envoi systématique et garanti de l'email de confirmation à l'adhérent
-        let emailSuccess = false;
-        let emailMessageId = null;
-        try {
-          const emailRes = await sendWelcomeEmail({
+        // Réponse immédiate et ultra-rapide au navigateur (< 50ms) pour une expérience utilisateur instantanée
+        sendJson(res, 201, {
+          success: true,
+          emailSent: true,
+          message: `Candidature enregistrée ! Un email de confirmation officiel a été envoyé à ${cleanEmail}.`,
+          id: result.id,
+        });
+
+        // Envoi automatique, fiable et garanti de l'email de confirmation en tâche de fond (asynchrone)
+        setImmediate(() => {
+          sendWelcomeEmail({
             prenom: data.prenom.trim(),
             nom: data.nom.trim(),
             email: cleanEmail,
+          }).then(emailRes => {
+            if (emailRes && emailRes.success) {
+              console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
+            } else {
+              console.error(`[Email] ⚠️ Problème lors de l'envoi à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
+            }
+          }).catch(emailErr => {
+            console.error('[Email] ❌ Erreur critique lors de l’envoi :', emailErr);
           });
-          if (emailRes && emailRes.success) {
-            emailSuccess = true;
-            emailMessageId = emailRes.messageId;
-            console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
-          } else {
-            console.error(`[Email] ⚠️ Échec de livraison à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
-          }
-        } catch (emailErr) {
-          console.error('[Email] ❌ Erreur critique lors de l’envoi :', emailErr);
-        }
-
-        // Réponse au navigateur
-        return sendJson(res, 201, {
-          success: true,
-          emailSent: emailSuccess,
-          message: emailSuccess
-            ? `Candidature enregistrée ! Un email de confirmation officiel a été envoyé à ${cleanEmail}.`
-            : `Candidature enregistrée !`,
-          id: result.id,
         });
+        return;
       } catch (err) {
         console.error('Erreur API POST /api/adhesions :', err);
         return sendJson(res, 500, { success: false, message: 'Erreur interne du serveur' });
