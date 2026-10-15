@@ -338,24 +338,77 @@
     } catch (e) {}
   }
 
-  /* Bouton pour inscrire une autre personne ou soumettre une nouvelle adhésion */
-  const btnAnotherMember = $('#btnAnotherMember');
-  if (btnAnotherMember) {
-    btnAnotherMember.addEventListener('click', () => {
-      form.reset();
-      $$('.field', form).forEach(f => f.classList.remove('invalid'));
-      $$('.error', form).forEach(e => e.textContent = '');
-      const counter = $('#counter');
-      if (counter) counter.textContent = '0/500';
+  /* Fonction pour réinitialiser le formulaire avec des champs 100% vides */
+  window.resetFormForNewMember = function () {
+    try {
       localStorage.removeItem('arsii_submitted');
       localStorage.removeItem('arsii_submitted_email');
       localStorage.removeItem('arsii_submitted_msg');
-      document.documentElement.classList.remove('is-submitted');
-      successEl.hidden = true;
+    } catch (e) {}
+
+    document.documentElement.classList.remove('is-submitted');
+    document.body.classList.remove('is-submitted');
+
+    if (form) {
+      form.reset();
+
+      // Vider manuellement tous les champs texte, email, tel, textarea
+      const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea');
+      inputs.forEach(input => {
+        input.value = '';
+        input.removeAttribute('aria-invalid');
+      });
+
+      // Réinitialiser les menus déroulants
+      const selects = form.querySelectorAll('select');
+      selects.forEach(select => {
+        select.selectedIndex = 0;
+        select.removeAttribute('aria-invalid');
+      });
+
+      // Décocher toutes les cases à cocher et boutons radio
+      const checks = form.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+      checks.forEach(check => {
+        check.checked = false;
+      });
+
+      // Désactiver les champs "Autre"
+      const otherInputs = form.querySelectorAll('.other');
+      otherInputs.forEach(oi => {
+        oi.disabled = true;
+        oi.value = '';
+      });
+
+      // Nettoyer les messages d'erreur et classes invalid
+      const fields = form.querySelectorAll('.field');
+      fields.forEach(f => f.classList.remove('invalid'));
+
+      const errors = form.querySelectorAll('.error');
+      errors.forEach(err => {
+        err.textContent = '';
+      });
+
+      const counter = document.getElementById('counter');
+      if (counter) counter.textContent = '0/500';
+
       form.hidden = false;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      const firstInput = form.elements['nom'];
+      form.style.display = 'block';
+    }
+
+    if (successEl) {
+      successEl.hidden = true;
+      successEl.style.display = 'none';
+    }
+
+    // Scroll fluide vers le haut du formulaire et focus sur le premier champ
+    const header = document.querySelector('.intro') || form;
+    if (header) {
+      header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    setTimeout(() => {
+      const firstInput = form ? form.querySelector('#nom') : null;
       if (firstInput) firstInput.focus();
-    });
-  }
+    }, 400);
+  };
 })();

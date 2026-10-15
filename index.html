@@ -230,7 +230,7 @@
       <h2>Merci, ta candidature est envoyée !</h2>
       <p id="successMessage">Un email de confirmation officiel avec tous les détails du Club ARSII IIT vient de t'être envoyé. En attendant, rejoins-nous sur Instagram !</p>
       <div style="display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:16px;">
-        <button type="button" class="btn" id="btnAnotherMember" style="min-width:auto;padding:12px 24px;font-size:0.95rem;">
+        <button type="button" class="btn" id="btnAnotherMember" onclick="if(window.resetFormForNewMember){window.resetFormForNewMember();}else{window.location.href='?reset=1';}" style="min-width:auto;padding:12px 24px;font-size:0.95rem;cursor:pointer;">
           <svg style="width:18px;height:18px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           Inscrire une autre personne
         </button>
