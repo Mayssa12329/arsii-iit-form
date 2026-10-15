@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const https = require('https');
 const path = require('path');
 const fs   = require('fs');
 
@@ -319,6 +320,51 @@ function buildWelcomeEmailHtml(prenom) {
 </html>`;
 }
 
+// ── Envoi via l'API HTTP Brevo (port 443 HTTPS — fonctionne sur Render) ────
+function sendViaBrevoAPI({ apiKey, senderEmail, toEmail, toName, subject, htmlContent, textContent }) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      sender     : { name: 'Club ARSII IIT', email: senderEmail },
+      to         : [{ email: toEmail, name: toName }],
+      subject,
+      htmlContent,
+      textContent,
+    });
+    const options = {
+      hostname: 'api.brevo.com',
+      path    : '/v3/smtp/email',
+      method  : 'POST',
+      headers : {
+        'api-key'       : apiKey,
+        'Content-Type'  : 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+      timeout: 20000,
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            const parsed = JSON.parse(data);
+            resolve({ success: true, messageId: parsed.messageId || 'brevo-api-sent' });
+          } catch (e) {
+            resolve({ success: true, messageId: 'brevo-api-sent' });
+          }
+        } else {
+          reject(new Error(`Brevo API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Brevo API timeout')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 async function sendWelcomeEmail({ prenom, nom, email }) {
   try {
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -326,16 +372,12 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       throw new Error(`Adresse email invalide ou manquante : "${email}"`);
     }
 
-    const mailClient  = await getTransporter();
     const p = prenom
       ? prenom.trim().charAt(0).toUpperCase() + prenom.trim().slice(1).toLowerCase()
       : 'Adhérent(e)';
     const senderEmail = process.env.SMTP_USER || 'arsii.iit189@gmail.com';
-    const fromAddress = process.env.SMTP_FROM || `"Club ARSII IIT" <${senderEmail}>`;
-    const replyAddress = process.env.SMTP_REPLY_TO || senderEmail;
     const htmlContent = buildWelcomeEmailHtml(prenom);
     const subject     = `Confirmation d'adhésion au Club ARSII IIT – ${p}`;
-
     const textContent = [
       `Bonjour ${p} !`, '',
       `Ton adhésion au Club ARSII IIT est confirmée !`, '',
@@ -351,18 +393,40 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       `Association ARSII - Institut International de Technologie (IIT Sfax)`,
     ].join('\n');
 
-    const info = await mailClient.sendMail({
-      from       : fromAddress,
-      replyTo    : replyAddress,
-      to         : cleanEmail,
-      subject,
-      priority   : 'normal',
-      text       : textContent,
-      html       : htmlContent,
-    });
+    // ── PRIORITÉ 1 : API HTTP Brevo (fonctionne sur Render, port 443) ────────
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey) {
+      console.log(`[Email] Envoi via Brevo API HTTP -> ${cleanEmail}`);
+      const result = await sendViaBrevoAPI({
+        apiKey     : brevoApiKey,
+        senderEmail,
+        toEmail    : cleanEmail,
+        toName     : `${p} ${(nom || '').trim()}`.trim(),
+        subject,
+        htmlContent,
+        textContent,
+      });
+      console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${result.messageId}`);
+      return { success: true, messageId: result.messageId };
+    }
 
+    // ── FALLBACK : SMTP nodemailer (usage local uniquement) ──────────────────
+    console.log(`[Email] Envoi via SMTP -> ${cleanEmail}`);
+    const mailClient  = await getTransporter();
+    const fromAddress = process.env.SMTP_FROM || `"Club ARSII IIT" <${senderEmail}>`;
+    const replyAddress = process.env.SMTP_REPLY_TO || senderEmail;
+    const info = await mailClient.sendMail({
+      from   : fromAddress,
+      replyTo: replyAddress,
+      to     : cleanEmail,
+      subject,
+      priority: 'normal',
+      text   : textContent,
+      html   : htmlContent,
+    });
     console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
+
   } catch (err) {
     console.error(`[Email] ERREUR -> ${email} :`, err.message);
     return { success: false, error: err.message };
