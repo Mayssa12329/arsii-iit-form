@@ -16,8 +16,15 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const LOGO_URL   = 'https://i.imgur.com/VAeqWIg.png';
-const CAMPUS_URL = 'https://i.imgur.com/NCic1bs.jpeg';
+const LOGO_URL              = 'https://i.imgur.com/VAeqWIg.png';
+const CAMPUS_URL            = 'https://i.imgur.com/NCic1bs.jpeg';
+const TITRE_BIENVENUE_URL   = 'https://i.imgur.com/f9i0Q1D.png';
+const BANNIERE_SLOGAN_URL   = 'https://i.imgur.com/nVoUv8N.png';
+const QR_INSTAGRAM_URL      = 'https://i.imgur.com/hd7SqUJ.png';
+const REJOINS_URL           = 'https://i.imgur.com/9EGtwtS.png';
+const BIENVENUE_AVENTURE_URL= 'https://i.imgur.com/UzlfxMp.png';
+const SIGNATURE_URL         = 'https://i.imgur.com/hnyIDef.png';
+const AVION_URL             = 'https://i.imgur.com/iWynWBE.png';
 
 let transporter = null;
 async function getTransporter() {
@@ -112,7 +119,7 @@ function buildWelcomeEmailHtml(prenom) {
               style="display:block;width:145px;max-width:145px;height:auto;border:0;"/>
           </td>
           <td valign="middle" align="right" style="padding:14px 24px 10px 10px;">
-            <img src="cid:bienvenue-aventure" alt="Bienvenue dans l'aventure !" width="145"
+            <img src="${BIENVENUE_AVENTURE_URL}" alt="Bienvenue dans l'aventure !" width="145"
               style="display:block;width:145px;height:auto;max-width:100%;border:0;margin-left:auto;" />
           </td>
         </tr>
@@ -167,7 +174,7 @@ function buildWelcomeEmailHtml(prenom) {
 
           <!-- ─── TITRE : BIENVENUE AU CLUB ARSII IIT ! ─── -->
           <div style="margin:4px 0 16px 0;text-align:left;">
-            <img src="cid:titre-bienvenue" alt="Bienvenue au Club ARSII IIT !" width="440"
+            <img src="${TITRE_BIENVENUE_URL}" alt="Bienvenue au Club ARSII IIT !" width="440"
               style="display:block;width:100%;max-width:440px;height:auto;border:0;" />
           </div>
 
@@ -195,7 +202,7 @@ function buildWelcomeEmailHtml(prenom) {
 
           <!-- ─── 3. ENCADRE SLOGAN : ENSEMBLE, INNOVONS, PARTAGEONS ET AVANCONS ! ─── -->
           <div style="margin:0 0 22px 0;text-align:center;">
-            <img src="cid:banniere-slogan" alt="Ensemble, innovons, partageons et avançons !" width="540"
+            <img src="${BANNIERE_SLOGAN_URL}" alt="Ensemble, innovons, partageons et avan&ccedil;ons !" width="540"
               style="display:block;width:100%;max-width:540px;height:auto;border:0;margin:0 auto;" />
           </div>
 
@@ -207,7 +214,7 @@ function buildWelcomeEmailHtml(prenom) {
 
                 <!-- QR Code Instagram ARSII_IIT (non cliquable, uniquement pour être scanné) -->
                 <td valign="middle" width="90" style="width:90px;padding-right:14px;">
-                  <img src="cid:qr-instagram" alt="Scanner pour rejoindre ARSII IIT sur Instagram" width="90" height="90"
+                  <img src="${QR_INSTAGRAM_URL}" alt="Scanner pour rejoindre ARSII IIT sur Instagram" width="90" height="90"
                     style="display:block;width:90px;height:90px;border:0;pointer-events:none;cursor:default;"/>
                 </td>
 
@@ -232,7 +239,7 @@ function buildWelcomeEmailHtml(prenom) {
 
                 <!-- Droite : "Rejoins la communaute ! ♡" en ecriture manuscrite penchee avec coeur -->
                 <td valign="middle" width="130" style="width:130px;padding-left:10px;text-align:center;">
-                  <img src="cid:rejoins-communaute" alt="Rejoins la communauté ! ♡" width="125"
+                  <img src="${REJOINS_URL}" alt="Rejoins la communaut&eacute; ! &hearts;" width="125"
                     style="display:block;width:125px;height:auto;max-width:100%;border:0;margin:0 auto;" />
                 </td>
 
@@ -245,13 +252,13 @@ function buildWelcomeEmailHtml(prenom) {
             <tr>
               <!-- Gauche : Signature -->
               <td valign="middle" align="left">
-                <img src="cid:signature-equipe" alt="À très bientôt au Club ARSII IIT ! L'équipe ARSII IIT" width="215"
+                <img src="${SIGNATURE_URL}" alt="&Agrave; tr&egrave;s bient&ocirc;t au Club ARSII IIT ! L'&eacute;quipe ARSII IIT" width="215"
                   style="display:block;width:215px;height:auto;max-width:100%;border:0;" />
               </td>
 
               <!-- Droite : Avion en papier origami avec trainee en pointilles boucles -->
               <td valign="bottom" align="right" width="140" style="width:140px;padding-bottom:4px;">
-                <img src="cid:avion-papier" alt="Avion en papier" width="130"
+                <img src="${AVION_URL}" alt="Avion en papier" width="130"
                   style="display:block;width:130px;height:auto;max-width:100%;border:0;margin-left:auto;" />
               </td>
             </tr>
@@ -352,50 +359,6 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       priority   : 'normal',
       text       : textContent,
       html       : htmlContent,
-      attachments: [
-        {
-          filename   : 'titre-bienvenue.png',
-          path       : path.join(__dirname, 'assets', 'img', 'titre-bienvenue.png'),
-          cid        : 'titre-bienvenue',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'banniere-slogan.png',
-          path       : path.join(__dirname, 'assets', 'img', 'banniere-slogan.png'),
-          cid        : 'banniere-slogan',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'qr-instagram.png',
-          path       : path.join(__dirname, 'assets', 'img', 'qr-instagram.png'),
-          cid        : 'qr-instagram',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'rejoins-communaute.png',
-          path       : path.join(__dirname, 'assets', 'img', 'rejoins-communaute.png'),
-          cid        : 'rejoins-communaute',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'bienvenue-aventure.png',
-          path       : path.join(__dirname, 'assets', 'img', 'bienvenue-aventure.png'),
-          cid        : 'bienvenue-aventure',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'signature-equipe.png',
-          path       : path.join(__dirname, 'assets', 'img', 'signature-equipe.png'),
-          cid        : 'signature-equipe',
-          contentType: 'image/png',
-        },
-        {
-          filename   : 'avion-papier.png',
-          path       : path.join(__dirname, 'assets', 'img', 'avion-papier.png'),
-          cid        : 'avion-papier',
-          contentType: 'image/png',
-        },
-      ],
     });
 
     console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${info.messageId}`);

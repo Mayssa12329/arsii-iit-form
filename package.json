@@ -4,7 +4,8 @@
   "description": "Formulaire d'adhésion - Club ARSII IIT",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "sync": "node sync-emails.js"
   },
   "keywords": [
     "arsii",

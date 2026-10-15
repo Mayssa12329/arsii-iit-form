@@ -27,10 +27,19 @@ db.exec(`
     annee TEXT NOT NULL,
     motivation TEXT,
     interets TEXT,
-    source TEXT
+    source TEXT,
+    email_sent INTEGER DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_adhesions_email ON adhesions(email);
 `);
+
+// Migration : ajouter la colonne email_sent si elle n'existe pas encore
+try {
+  db.exec('ALTER TABLE adhesions ADD COLUMN email_sent INTEGER DEFAULT 0;');
+  console.log('[DB] Colonne email_sent ajoutée avec succès.');
+} catch (e) {
+  // La colonne existe déjà, c'est normal
+}
 
 function syncJsonBackup() {
   try {
@@ -187,6 +196,16 @@ function saveOrUpdateAdhesion(data) {
   }
 }
 
+function getPendingEmailAdhesions() {
+  const stmt = db.prepare('SELECT * FROM adhesions WHERE email_sent = 0 OR email_sent IS NULL ORDER BY id ASC');
+  return stmt.all();
+}
+
+function markEmailSent(id) {
+  const stmt = db.prepare('UPDATE adhesions SET email_sent = 1 WHERE id = ?');
+  stmt.run(id);
+}
+
 module.exports = {
   db,
   insertAdhesion,
@@ -195,6 +214,8 @@ module.exports = {
   getAdhesionByPhone,
   getAdhesionByEmail,
   getAllAdhesions,
+  getPendingEmailAdhesions,
+  markEmailSent,
   deleteAdhesionById,
   clearAllAdhesions,
   exportCSV,

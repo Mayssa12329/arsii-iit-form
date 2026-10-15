@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById } = require('./db');
+const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById, getPendingEmailAdhesions, markEmailSent } = require('./db');
 const { sendWelcomeEmail, buildWelcomeEmailHtml } = require('./mailer');
 
 // Chargement basique d'un fichier .env s'il existe
@@ -182,6 +182,7 @@ const server = http.createServer((req, res) => {
           }).then(emailRes => {
             if (emailRes && emailRes.success) {
               console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
+              markEmailSent(result.id);
             } else {
               console.error(`[Email] ⚠️ Problème lors de l'envoi à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
             }
@@ -223,6 +224,55 @@ const server = http.createServer((req, res) => {
     sendWelcomeEmail({ prenom, nom: 'Test', email: to })
       .then(info => sendJson(res, 200, { success: true, messageId: info ? info.messageId : 'sent', to, smtp_user: process.env.SMTP_USER || 'non-defini' }))
       .catch(err => sendJson(res, 500, { success: false, error: err.message, smtp_user: process.env.SMTP_USER || 'non-defini' }));
+    return;
+  }
+
+  // Route : GET /api/send-pending-emails - Envoie les mails aux nouvelles personnes sans confirmation
+  if (req.method === 'GET' && rawPath === '/api/send-pending-emails') {
+    if (!isAdminAuthorized(req)) return sendJson(res, 401, { error: 'Unauthorized' });
+    const pending = getPendingEmailAdhesions();
+    if (pending.length === 0) {
+      return sendJson(res, 200, { success: true, message: 'Aucune personne en attente de mail.', sent: 0, failed: 0 });
+    }
+    let sent = 0;
+    let failed = 0;
+    const results = [];
+    // Traitement séquentiel pour éviter le spam
+    (async () => {
+      for (const person of pending) {
+        try {
+          const emailRes = await sendWelcomeEmail({
+            prenom: person.prenom,
+            nom: person.nom,
+            email: person.email,
+          });
+          if (emailRes && emailRes.success) {
+            markEmailSent(person.id);
+            sent++;
+            results.push({ id: person.id, email: person.email, status: 'envoyé' });
+            console.log(`[Email] ✅ Mail envoyé à ${person.email} (ID #${person.id})`);
+          } else {
+            failed++;
+            results.push({ id: person.id, email: person.email, status: 'échec', error: emailRes ? emailRes.error : 'inconnu' });
+            console.error(`[Email] ⚠️ Échec envoi à ${person.email}`);
+          }
+        } catch (err) {
+          failed++;
+          results.push({ id: person.id, email: person.email, status: 'échec', error: err.message });
+          console.error(`[Email] ❌ Erreur envoi à ${person.email} :`, err.message);
+        }
+        // Pause de 500ms entre chaque envoi pour éviter le rate-limiting
+        await new Promise(r => setTimeout(r, 500));
+      }
+      sendJson(res, 200, {
+        success: true,
+        message: `${sent} mail(s) envoyé(s), ${failed} échec(s).`,
+        total: pending.length,
+        sent,
+        failed,
+        details: results,
+      });
+    })();
     return;
   }
 
@@ -330,4 +380,43 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Club ARSII IIT Formulaire disponible sur http://localhost:${PORT}`);
   console.log(`Base de données active : data/adhesions.db`);
+
+  // ✉️ Envoi automatique des mails de confirmation à toutes les personnes en attente dans la base
+  setImmediate(async () => {
+    try {
+      const pending = getPendingEmailAdhesions();
+      if (pending.length === 0) {
+        console.log('[Email] ✅ Toutes les personnes ont déjà reçu leur mail de confirmation.');
+        return;
+      }
+      console.log(`[Email] 📋 ${pending.length} personne(s) sans mail de confirmation détectée(s). Envoi en cours...`);
+      let sent = 0;
+      let failed = 0;
+      for (const person of pending) {
+        try {
+          const emailRes = await sendWelcomeEmail({
+            prenom: person.prenom,
+            nom: person.nom,
+            email: person.email,
+          });
+          if (emailRes && emailRes.success) {
+            markEmailSent(person.id);
+            sent++;
+            console.log(`[Email] ✅ Mail envoyé à ${person.email} (ID #${person.id})`);
+          } else {
+            failed++;
+            console.error(`[Email] ⚠️ Échec envoi à ${person.email} :`, emailRes ? emailRes.error : 'inconnu');
+          }
+        } catch (err) {
+          failed++;
+          console.error(`[Email] ❌ Erreur envoi à ${person.email} :`, err.message);
+        }
+        // Pause 600ms entre chaque envoi pour éviter le rate-limiting Gmail
+        await new Promise(r => setTimeout(r, 600));
+      }
+      console.log(`[Email] 🎉 Résultat : ${sent} mail(s) envoyé(s), ${failed} échec(s).`);
+    } catch (err) {
+      console.error('[Email] ❌ Erreur lors de l\'envoi des mails au démarrage :', err.message);
+    }
+  });
 });
