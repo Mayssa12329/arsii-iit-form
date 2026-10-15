@@ -172,6 +172,20 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+
+  // Route de diagnostic email (Sécurisée par clé admin)
+  if (req.method === 'GET' && rawPath === '/api/test-email') {
+    if (!isAdminAuthorized(req)) return sendJson(res, 401, { error: 'Unauthorized' });
+    const urlObj = new URL(req.url, 'http://localhost');
+    const to = urlObj.searchParams.get('to') || 'maysabenamar144@gmail.com';
+    try {
+      const info = await sendWelcomeEmail({ prenom: 'Maysa', nom: 'Ben Amar', email: to });
+      return sendJson(res, 200, { success: true, messageId: info ? info.messageId : 'sent', to, smtp_user: process.env.SMTP_USER || 'non-defini' });
+    } catch (err) {
+      return sendJson(res, 500, { success: false, error: err.message, smtp_user: process.env.SMTP_USER || 'non-defini' });
+    }
+  }
+
   // 2. GET /api/adhesions - Liste des adhérents
   if (req.method === 'GET' && rawPath === '/api/adhesions') {
     if (!isAdminAuthorized(req)) {
