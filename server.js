@@ -262,9 +262,10 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+    const isAsset = ['.css', '.js', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.ico', '.woff2'].includes(ext);
     res.writeHead(200, {
       'Content-Type': contentType,
-      'Cache-Control': 'no-cache',
+      'Cache-Control': isAsset ? 'public, max-age=86400, stale-while-revalidate=3600' : 'no-cache',
     });
 
     const stream = fs.createReadStream(filePath);
