@@ -26,9 +26,8 @@
           localStorage.removeItem('arsii_submitted');
           localStorage.removeItem('arsii_submitted_email');
           localStorage.removeItem('arsii_submitted_msg');
-        } else if (localStorage.getItem('arsii_submitted_email')) {
-          // On met is-submitted provisoirement, main.js vérifiera la base et retirera si nécessaire
-          document.documentElement.classList.add('is-submitted');
+        } else if (urlParams.get('test') === '1') {
+          localStorage.clear();
         }
       } catch (e) {}
     })();

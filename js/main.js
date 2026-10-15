@@ -8,14 +8,15 @@
   /* ---------- CONFIGURATION ----------
      L'envoi se fait par défaut vers notre base de données locale (/api/adhesions).
      Si le site est ouvert depuis un autre port local (ex: Live Server 5500) ou en local, on cible le port 3000 */
-  const isLocalhostOtherPort = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000';
-  const isFileProtocol = window.location.protocol === 'file:';
-  const defaultApiUrl = (isLocalhostOtherPort || isFileProtocol)
-    ? 'http://localhost:3000/api/adhesions'
-    : '/api/adhesions';
+  const port = window.location.port;
+  const isPort3000 = port === '3000';
+  const isFile = window.location.protocol === 'file:';
+  const apiBase = (isFile || (!isPort3000 && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname))))
+    ? 'http://localhost:3000'
+    : '';
 
   const CONFIG = {
-    ENDPOINT: defaultApiUrl,
+    ENDPOINT: apiBase ? `${apiBase}/api/adhesions` : '/api/adhesions',
   };
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -30,7 +31,7 @@
   // Permet de réinitialiser le formulaire si besoin avec ?reset=1 ou ?nouveau=1
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('reset') === '1' || urlParams.get('nouveau') === '1') {
+    if (urlParams.get('reset') === '1' || urlParams.get('nouveau') === '1' || urlParams.get('test') === '1') {
       localStorage.removeItem('arsii_submitted');
       localStorage.removeItem('arsii_submitted_email');
       localStorage.removeItem('arsii_submitted_msg');
@@ -38,23 +39,20 @@
     }
   } catch (e) {}
 
-  // Vérification : si la personne a soumis, on vérifie que son email est toujours dans la base
-  // Si l'email a été supprimé, on réaffiche le formulaire
+  // Vérification de l'état d'adhésion précédent
   const submittedEmail = localStorage.getItem('arsii_submitted_email');
   if (submittedEmail) {
-    // On vérifie côté serveur si cet email existe encore dans la base
-    fetch('/api/check-email?email=' + encodeURIComponent(submittedEmail))
+    const checkUrl = `${apiBase}/api/check-email?email=${encodeURIComponent(submittedEmail)}`;
+    fetch(checkUrl)
       .then(r => r.json())
       .then(data => {
-        if (data.exists) {
-          // Toujours inscrit → on affiche l'écran de succès
+        if (data && data.exists) {
           form.hidden = true;
           const savedMsg = localStorage.getItem('arsii_submitted_msg');
           if (savedMsg) { const sub = $('p', successEl); if (sub) sub.textContent = savedMsg; }
           successEl.hidden = false;
           document.documentElement.classList.add('is-submitted');
         } else {
-          // Plus dans la base → on efface et on réaffiche le formulaire
           localStorage.removeItem('arsii_submitted');
           localStorage.removeItem('arsii_submitted_email');
           localStorage.removeItem('arsii_submitted_msg');
@@ -64,10 +62,10 @@
         }
       })
       .catch(() => {
-        // En cas d'erreur réseau, on affiche quand même l'écran de succès (fallback)
-        form.hidden = true;
-        successEl.hidden = false;
-        document.documentElement.classList.add('is-submitted');
+        // En cas d'erreur de communication, on garde le formulaire accessible pour soumettre
+        form.hidden = false;
+        successEl.hidden = true;
+        document.documentElement.classList.remove('is-submitted');
       });
   }
 

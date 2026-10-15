@@ -39,7 +39,37 @@ function doPost(e) {
         'Email : ' + d.email + '\nTéléphone : ' + d.telephone + '\nFilière : ' + d.filiere +
         ' (' + d.niveau + ', ' + d.annee + ')\n\nMotivation :\n' + d.motivation);
     }
-    return json({ ok: true });
+
+    // Envoi automatique de l'email de confirmation à l'adhérent
+    if (d.email) {
+      try {
+        const p = d.prenom ? (d.prenom.trim().charAt(0).toUpperCase() + d.prenom.trim().slice(1).toLowerCase()) : 'Adhérent(e)';
+        const subject = "Confirmation d'adhésion au Club ARSII IIT – " + p;
+        const body = "Bonjour " + p + " !\n\n" +
+          "Ton adhésion au Club ARSII IIT est confirmée ! 🎉\n\n" +
+          "Nous avons bien reçu ton formulaire d'adhésion au Club ARSII IIT.\n" +
+          "Merci pour ton intérêt ! Nous sommes ravis de te voir rejoindre notre communauté.\n\n" +
+          "Au Club ARSII IIT, tu pourras participer à des événements, découvrir de nouvelles idées, " +
+          "travailler sur des projets innovants et rencontrer des étudiants passionnés par la technologie.\n\n" +
+          "Ensemble, innovons, partageons et avançons !\n\n" +
+          "Suis-nous sur Instagram : https://www.instagram.com/arsii_iit/\n\n" +
+          "À très bientôt au Club ARSII IIT !\n" +
+          "L'équipe ARSII IIT\n" +
+          "INNOVER • CONNECTER • IMPACTER\n" +
+          "Association ARSII - Institut International de Technologie (IIT Sfax)";
+
+        MailApp.sendEmail({
+          to: d.email,
+          subject: subject,
+          body: body,
+          name: 'Club ARSII IIT',
+        });
+      } catch (errEmail) {
+        Logger.log("Erreur envoi email d'adhésion : " + errEmail);
+      }
+    }
+
+    return json({ ok: true, emailSent: true });
   } catch (err) {
     return json({ ok: false, error: String(err) });
   } finally {

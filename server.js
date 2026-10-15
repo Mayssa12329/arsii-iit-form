@@ -111,46 +111,39 @@ const server = http.createServer((req, res) => {
           return sendJson(res, 400, { success: false, errors });
         }
 
-        // Conditions strictes : interdiction de remplir deux fois avec le même email OU le même numéro de téléphone
-        const existingEmail = getAdhesionByEmail(data.email.trim());
-        const existingPhone = getAdhesionByPhone(data.telephone);
+        // Nettoyage et normalisation des données
+        const cleanEmail = data.email.trim().toLowerCase();
+        const cleanTel = data.telephone.trim();
 
-        if (existingEmail && existingPhone) {
-          console.warn(`[Base de données] Rejet doublon (Email et Téléphone déjà enregistrés) : ${data.email} / ${data.telephone}`);
-          return sendJson(res, 409, {
-            success: false,
-            duplicateEmail: true,
-            duplicatePhone: true,
-            message: '⛔ Cet email et ce numéro sont déjà inscrits.',
-          });
-        }
+        // Vérification des doublons sur le téléphone
+        const existingEmail = getAdhesionByEmail(cleanEmail);
+        const existingPhone = getAdhesionByPhone(cleanTel);
 
-        if (existingEmail) {
-          console.warn(`[Base de données] Rejet doublon Email : ${data.email} (déjà utilisé par ID #${existingEmail.id})`);
-          return sendJson(res, 409, {
-            success: false,
-            duplicateEmail: true,
-            message: '⛔ Cet email est déjà inscrit.',
-            id: existingEmail.id,
-          });
-        }
-
-        if (existingPhone) {
-          console.warn(`[Base de données] Rejet doublon Téléphone : ${data.telephone} (déjà utilisé par ID #${existingPhone.id})`);
+        if (existingPhone && existingEmail && existingPhone.id !== existingEmail.id) {
+          console.warn(`[Base de données] Rejet : Téléphone ${cleanTel} déjà utilisé par ID #${existingPhone.id} (autre email)`);
           return sendJson(res, 409, {
             success: false,
             duplicatePhone: true,
-            message: '⛔ Ce numéro est déjà inscrit.',
+            message: '⛔ Ce numéro de téléphone est déjà inscrit avec une autre adresse email.',
+          });
+        }
+
+        if (existingPhone && !existingEmail) {
+          console.warn(`[Base de données] Rejet : Téléphone ${cleanTel} déjà inscrit par ID #${existingPhone.id}`);
+          return sendJson(res, 409, {
+            success: false,
+            duplicatePhone: true,
+            message: '⛔ Ce numéro de téléphone est déjà inscrit.',
             id: existingPhone.id,
           });
         }
 
-        // Insertion dans la base de données
-        const result = insertAdhesion({
+        // Sauvegarde ou mise à jour de l'adhésion dans la base de données
+        const result = saveOrUpdateAdhesion({
           nom: data.nom.trim(),
           prenom: data.prenom.trim(),
-          email: data.email.trim(),
-          telephone: data.telephone.trim(),
+          email: cleanEmail,
+          telephone: cleanTel,
           niveau: data.niveau.trim(),
           filiere: data.filiere.trim(),
           annee: data.annee.trim(),
@@ -159,28 +152,35 @@ const server = http.createServer((req, res) => {
           source: data.source || '',
         });
 
-        console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${data.email}) - ID #${result.id}`);
+        console.log(`[Base de données] Adhésion validée (${result.isUpdate ? 'Mise à jour' : 'Nouvelle'}) : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${result.id}`);
 
-        // Envoi automatique de l'email de confirmation en arrière-plan (instantané pour l'utilisateur)
-        sendWelcomeEmail({
-          prenom: data.prenom.trim(),
-          nom: data.nom.trim(),
-          email: data.email.trim(),
-        }).then(emailRes => {
+        // Envoi systématique et garanti de l'email de confirmation à l'adhérent
+        let emailSuccess = false;
+        let emailMessageId = null;
+        try {
+          const emailRes = await sendWelcomeEmail({
+            prenom: data.prenom.trim(),
+            nom: data.nom.trim(),
+            email: cleanEmail,
+          });
           if (emailRes && emailRes.success) {
-            console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${data.email} (ID: ${emailRes.messageId})`);
+            emailSuccess = true;
+            emailMessageId = emailRes.messageId;
+            console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
           } else {
-            console.error(`[Email] Erreur lors de l'envoi à ${data.email} :`, emailRes ? emailRes.error : 'inconnu');
+            console.error(`[Email] ⚠️ Échec de livraison à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
           }
-        }).catch(emailErr => {
-          console.error('[Email] Échec critique envoi :', emailErr);
-        });
+        } catch (emailErr) {
+          console.error('[Email] ❌ Erreur critique lors de l’envoi :', emailErr);
+        }
 
-        // Réponse immédiate et ultra-rapide au navigateur (< 50ms)
+        // Réponse au navigateur
         return sendJson(res, 201, {
           success: true,
-          emailSent: true,
-          message: 'Candidature enregistrée ! Un email de confirmation a été envoyé à votre adresse email.',
+          emailSent: emailSuccess,
+          message: emailSuccess
+            ? `Candidature enregistrée ! Un email de confirmation officiel a été envoyé à ${cleanEmail}.`
+            : `Candidature enregistrée !`,
           id: result.id,
         });
       } catch (err) {
@@ -204,12 +204,16 @@ const server = http.createServer((req, res) => {
   }
 
 
-  // Route de diagnostic email (Sécurisée par clé admin)
+  // Route de diagnostic email (permet de tester l'envoi vers n'importe quel email)
   if (req.method === 'GET' && rawPath === '/api/test-email') {
     if (!isAdminAuthorized(req)) return sendJson(res, 401, { error: 'Unauthorized' });
     const urlObj = new URL(req.url, 'http://localhost');
-    const to = urlObj.searchParams.get('to') || 'maysabenamar144@gmail.com';
-    sendWelcomeEmail({ prenom: 'Maysa', nom: 'Ben Amar', email: to })
+    const to = (urlObj.searchParams.get('to') || urlObj.searchParams.get('email') || '').trim();
+    if (!to) {
+      return sendJson(res, 400, { success: false, message: 'Indiquez une adresse email avec ?to=votre-email@domaine.com' });
+    }
+    const prenom = urlObj.searchParams.get('prenom') || 'Adhérent';
+    sendWelcomeEmail({ prenom, nom: 'Test', email: to })
       .then(info => sendJson(res, 200, { success: true, messageId: info ? info.messageId : 'sent', to, smtp_user: process.env.SMTP_USER || 'non-defini' }))
       .catch(err => sendJson(res, 500, { success: false, error: err.message, smtp_user: process.env.SMTP_USER || 'non-defini' }));
     return;
