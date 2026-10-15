@@ -22,9 +22,8 @@ const CAMPUS_URL = 'https://i.imgur.com/NCic1bs.jpeg';
 let transporter = null;
 async function getTransporter() {
   if (transporter) return transporter;
-  const user = process.env.SMTP_USER;
-  let pass   = process.env.SMTP_PASS;
-  if (pass) pass = pass.replace(/\s+/g, '');
+  const user = process.env.SMTP_USER || 'arsii.iit189@gmail.com';
+  let pass   = (process.env.SMTP_PASS || 'ypji muzb fbyi qowf').replace(/\s+/g, '');
   const service = process.env.SMTP_SERVICE || 'gmail';
 
   if (process.env.SMTP_HOST) {
