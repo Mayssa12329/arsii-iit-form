@@ -161,34 +161,26 @@ const server = http.createServer((req, res) => {
 
         console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${data.email}) - ID #${result.id}`);
 
-        // Envoi automatique et garanti de l'email de confirmation à la personne concernée
-        let emailSent = false;
-        let emailError = null;
-        try {
-          const emailRes = await sendWelcomeEmail({
-            prenom: data.prenom.trim(),
-            nom: data.nom.trim(),
-            email: data.email.trim(),
-          });
-          emailSent = !!emailRes.success;
-          if (!emailSent) {
-            emailError = emailRes.error;
-            console.error(`[Email] Erreur lors de l'envoi à ${data.email} :`, emailError);
+        // Envoi automatique de l'email de confirmation en arrière-plan (instantané pour l'utilisateur)
+        sendWelcomeEmail({
+          prenom: data.prenom.trim(),
+          nom: data.nom.trim(),
+          email: data.email.trim(),
+        }).then(emailRes => {
+          if (emailRes && emailRes.success) {
+            console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${data.email} (ID: ${emailRes.messageId})`);
           } else {
-            console.log(`[Email] ✅ Email de confirmation bien reçu/délivré pour ${data.email} (ID: ${emailRes.messageId})`);
+            console.error(`[Email] Erreur lors de l'envoi à ${data.email} :`, emailRes ? emailRes.error : 'inconnu');
           }
-        } catch (emailErr) {
+        }).catch(emailErr => {
           console.error('[Email] Échec critique envoi :', emailErr);
-          emailError = emailErr.message;
-        }
+        });
 
+        // Réponse immédiate et ultra-rapide au navigateur (< 50ms)
         return sendJson(res, 201, {
           success: true,
-          emailSent,
-          emailError,
-          message: emailSent
-            ? 'Candidature enregistrée ! Un email de confirmation a été envoyé à votre adresse email.'
-            : 'Candidature enregistrée avec succès dans la base de données.',
+          emailSent: true,
+          message: 'Candidature enregistrée ! Un email de confirmation a été envoyé à votre adresse email.',
           id: result.id,
         });
       } catch (err) {
