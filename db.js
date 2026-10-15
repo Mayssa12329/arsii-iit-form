@@ -9,6 +9,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const DB_PATH = path.join(DATA_DIR, 'adhesions.db');
 const JSON_BACKUP_PATH = path.join(DATA_DIR, 'adhesions.json');
+const CSV_BACKUP_PATH = path.join(DATA_DIR, 'adhesions.csv');
 
 const db = new DatabaseSync(DB_PATH);
 
@@ -40,6 +41,16 @@ function syncJsonBackup() {
   }
 }
 
+
+function syncCsvBackup() {
+  try {
+    const csv = exportCSV();
+    fs.writeFileSync(CSV_BACKUP_PATH, csv, 'utf-8');
+  } catch (err) {
+    console.error('Erreur lors de la sauvegarde CSV :', err);
+  }
+}
+
 function insertAdhesion(data) {
   const stmt = db.prepare(`
     INSERT INTO adhesions (
@@ -64,6 +75,7 @@ function insertAdhesion(data) {
   );
 
   syncJsonBackup();
+  syncCsvBackup();
 
   return {
     id: info.lastInsertRowid,
@@ -117,6 +129,7 @@ function deleteAdhesionById(id) {
   const stmt = db.prepare('DELETE FROM adhesions WHERE id = ?');
   stmt.run(id);
   syncJsonBackup();
+  syncCsvBackup();
 }
 
 function clearAllAdhesions() {
@@ -125,6 +138,7 @@ function clearAllAdhesions() {
     db.exec("DELETE FROM sqlite_sequence WHERE name='adhesions';");
   } catch (e) {}
   syncJsonBackup();
+  syncCsvBackup();
 }
 
 module.exports = {
