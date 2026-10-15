@@ -270,7 +270,19 @@
     setLoading(true);
     try {
       const res = await send(data);
-      showSuccess(res && res.duplicate ? 'Tu étais déjà inscrit(e) ! Tes coordonnées sont bien enregistrées dans notre base de données.' : null);
+      if (res && res.duplicate) {
+        // BLOC STRICT : afficher une erreur claire, ne pas montrer la page de succès
+        setStatus('⛔ Cette adresse email est déjà enregistrée dans notre base de données. Vous ne pouvez adhérer qu\'une seule fois.', true);
+        // Scroll vers le champ email et le surligner en rouge
+        const emailField = document.querySelector('#email');
+        if (emailField) {
+          emailField.closest('.field')?.classList.add('invalid');
+          emailField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          emailField.focus();
+        }
+      } else {
+        showSuccess(null);
+      }
     } catch (err) {
       console.error(err);
       setStatus(err.message || 'Une erreur est survenue. Vérifiez votre connexion et réessayez.', true);

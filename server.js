@@ -114,10 +114,10 @@ const server = http.createServer((req, res) => {
         // Vérification de doublon d'email
         const existing = getAdhesionByEmail(data.email.trim());
         if (existing) {
-          return sendJson(res, 200, {
-            success: true,
+          return sendJson(res, 409, {
+            success: false,
             duplicate: true,
-            message: 'Vous êtes déjà inscrit avec cette adresse email !',
+            message: '⛔ Cette adresse email est déjà enregistrée dans notre base de données. Chaque personne ne peut s\'adhérer qu\'une seule fois.',
             id: existing.id,
           });
         }
