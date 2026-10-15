@@ -115,21 +115,32 @@ const server = http.createServer((req, res) => {
         const cleanEmail = data.email.trim().toLowerCase();
         const cleanTel = data.telephone.trim();
 
-        // Vérification des doublons sur le téléphone
+        // Vérification stricte anti-redondance : interdiction de remplir deux fois avec le même email OU le même téléphone
         const existingEmail = getAdhesionByEmail(cleanEmail);
         const existingPhone = getAdhesionByPhone(cleanTel);
 
-        if (existingPhone && existingEmail && existingPhone.id !== existingEmail.id) {
-          console.warn(`[Base de données] Rejet : Téléphone ${cleanTel} déjà utilisé par ID #${existingPhone.id} (autre email)`);
+        if (existingEmail && existingPhone) {
+          console.warn(`[Base de données] Rejet doublon strict (Email et Téléphone déjà inscrits) : ${cleanEmail} / ${cleanTel}`);
           return sendJson(res, 409, {
             success: false,
+            duplicateEmail: true,
             duplicatePhone: true,
-            message: '⛔ Ce numéro de téléphone est déjà inscrit avec une autre adresse email.',
+            message: '⛔ Cet email et ce numéro de téléphone sont déjà inscrits.',
           });
         }
 
-        if (existingPhone && !existingEmail) {
-          console.warn(`[Base de données] Rejet : Téléphone ${cleanTel} déjà inscrit par ID #${existingPhone.id}`);
+        if (existingEmail) {
+          console.warn(`[Base de données] Rejet doublon strict Email : ${cleanEmail} (ID #${existingEmail.id})`);
+          return sendJson(res, 409, {
+            success: false,
+            duplicateEmail: true,
+            message: '⛔ Cette adresse email est déjà inscrite.',
+            id: existingEmail.id,
+          });
+        }
+
+        if (existingPhone) {
+          console.warn(`[Base de données] Rejet doublon strict Téléphone : ${cleanTel} (ID #${existingPhone.id})`);
           return sendJson(res, 409, {
             success: false,
             duplicatePhone: true,
@@ -138,8 +149,8 @@ const server = http.createServer((req, res) => {
           });
         }
 
-        // Sauvegarde ou mise à jour immédiate dans la base de données (< 5ms)
-        const result = saveOrUpdateAdhesion({
+        // Insertion unique de la nouvelle adhésion dans la base de données (< 5ms)
+        const result = insertAdhesion({
           nom: data.nom.trim(),
           prenom: data.prenom.trim(),
           email: cleanEmail,
@@ -152,7 +163,7 @@ const server = http.createServer((req, res) => {
           source: data.source || '',
         });
 
-        console.log(`[Base de données] Adhésion validée (${result.isUpdate ? 'Mise à jour' : 'Nouvelle'}) : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${result.id}`);
+        console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${result.id}`);
 
         // Réponse immédiate et ultra-rapide au navigateur (< 50ms) pour une expérience utilisateur instantanée
         sendJson(res, 201, {
