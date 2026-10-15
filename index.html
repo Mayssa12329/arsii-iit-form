@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formulaire d’adhésion – Club ARSII IIT</title>
+  <meta name="description" content="Rejoins le Club ARSII IIT : innovation, technologie et entrepreneuriat. Remplis le formulaire d’adhésion.">
+  <meta name="theme-color" content="#0f6774">
+  <link rel="icon" type="image/png" href="assets/img/favicon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefersDark)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        // Vérifie immédiatement si la candidature a déjà été soumise
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('reset') === '1' || urlParams.get('nouveau') === '1') {
+          localStorage.removeItem('arsii_submitted');
+          localStorage.removeItem('arsii_submitted_email');
+          localStorage.removeItem('arsii_submitted_msg');
+        } else if (localStorage.getItem('arsii_submitted_email')) {
+          // On met is-submitted provisoirement, main.js vérifiera la base et retirera si nécessaire
+          document.documentElement.classList.add('is-submitted');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+</head>
+<body>
+
+<!-- ============ THEME TOGGLE BUTTON ============ -->
+<button type="button" id="themeToggle" class="theme-toggle" aria-label="Activer le mode sombre" title="Activer / Désactiver le mode sombre">
+  <svg class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true"><use href="#i-sun"/></svg>
+  <svg class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"><use href="#i-moon"/></svg>
+</button>
+
+<!-- ============ SVG ICON SPRITE ============ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-cap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/><path d="M22 10v6"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-insta" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12.5 2.8 2.8L16.5 9"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+</svg>
+
+<div class="page">
+
+  <!-- ============ HERO ============ -->
+  <header class="hero">
+    <span class="dot dot--lg" aria-hidden="true"></span>
+    <span class="dot dot--sm" aria-hidden="true"></span>
+
+    <div class="hero__content">
+      <img class="hero__logo hero__logo--dark" src="assets/img/logo-dark.png" alt="Club ARSII IIT" width="900" height="313">
+      <img class="hero__logo hero__logo--light" src="assets/img/logo-light.png" alt="Club ARSII IIT" width="900" height="313">
+      <p class="hero__tagline">Rejoins une communauté<br>qui construit ton avenir !</p>
+    </div>
+
+    <div class="hero__photo">
+      <picture>
+        <source srcset="assets/img/iit-campus.webp" type="image/webp">
+        <img src="assets/img/iit-campus.jpg" alt="Campus de l’Institut International de Technologie (IIT) à Sfax" width="1400" height="934" fetchpriority="high">
+      </picture>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ============ INTRO ============ -->
+    <section class="card intro">
+      <div class="badge badge--xl"><svg><use href="#i-users"/></svg></div>
+      <div class="intro__text">
+        <h1>Formulaire d’adhésion<span>au Club ARSII IIT</span></h1>
+        <p>Tu es passionné(e) par l’innovation, la technologie et l’entrepreneuriat ?<br>
+           Rejoins le Club ARSII IIT et fais partie d’une communauté dynamique !</p>
+      </div>
+      <p class="intro__note" aria-hidden="true">Ensemble,<br>allons plus loin !</p>
+    </section>
+
+    <!-- ============ FORM ============ -->
+    <form id="joinForm" class="form" novalidate autocomplete="on">
+
+      <!-- 1. Infos personnelles -->
+      <fieldset class="card">
+        <legend><span class="badge"><svg><use href="#i-user"/></svg></span>1. Informations personnelles</legend>
+
+        <div class="field">
+          <label for="nom">Nom <b>*</b></label>
+          <input type="text" id="nom" name="nom" placeholder="Votre nom" autocomplete="family-name" required minlength="2" maxlength="60">
+          <small class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="prenom">Prénom <b>*</b></label>
+          <input type="text" id="prenom" name="prenom" placeholder="Votre prénom" autocomplete="given-name" required minlength="2" maxlength="60">
+          <small class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="email">Email <b>*</b></label>
+          <input type="email" id="email" name="email" placeholder="exemple@domaine.com" autocomplete="email" inputmode="email" required maxlength="120">
+          <small class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="telephone">Téléphone <b>*</b></label>
+          <input type="tel" id="telephone" name="telephone" placeholder="+216 XX XXX XXX" autocomplete="tel" inputmode="tel" required maxlength="20">
+          <small class="error" role="alert"></small>
+        </div>
+      </fieldset>
+
+      <!-- 2. Profil -->
+      <fieldset class="card">
+        <legend><span class="badge"><svg><use href="#i-cap"/></svg></span>2. Votre profil</legend>
+
+        <div class="field">
+          <label for="niveau">Votre niveau d’études <b>*</b></label>
+          <select id="niveau" name="niveau" required>
+            <option value="" selected disabled>Sélectionnez votre niveau</option>
+            <option>Cycle préparatoire</option>
+            <option>Licence</option>
+            <option>Cycle ingénieur</option>
+            <option>Master</option>
+            <option>Doctorat</option>
+          </select>
+          <small class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="filiere">Filière / Spécialité <b>*</b></label>
+          <input type="text" id="filiere" name="filiere" placeholder="Ex : Informatique, Génie civil, …" required maxlength="80">
+          <small class="error" role="alert"></small>
+        </div>
+        <div class="field">
+          <label for="annee">Année d’études <b>*</b></label>
+          <select id="annee" name="annee" required>
+            <option value="" selected disabled>Sélectionnez votre année</option>
+            <option>1ère année</option>
+            <option>2ème année</option>
+            <option>3ème année</option>
+            <option>4ème année</option>
+            <option>5ème année</option>
+          </select>
+          <small class="error" role="alert"></small>
+        </div>
+      </fieldset>
+
+      <!-- 3. Motivation -->
+      <fieldset class="card">
+        <legend><span class="badge"><svg><use href="#i-bulb"/></svg></span>3. Pourquoi nous rejoindre ?</legend>
+
+        <div class="field field--grow">
+          <label for="motivation">Qu’est-ce qui vous motive à rejoindre le Club ARSII IIT ? <b>*</b></label>
+          <textarea id="motivation" name="motivation" rows="5" maxlength="500" minlength="10" placeholder="Partagez votre motivation en quelques mots…" required></textarea>
+          <div class="field__foot">
+            <small class="error" role="alert"></small>
+            <span class="counter" id="counter" aria-live="polite">0/500</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- 4. Centres d'intérêt -->
+      <fieldset class="card">
+        <legend><span class="badge"><svg><use href="#i-target"/></svg></span>4. Vos centres d’intérêt</legend>
+
+        <p class="hint">Quels sont vos centres d’intérêt ? <span>(plusieurs choix possibles)</span></p>
+        <div class="choices choices--2">
+          <label class="check"><input type="checkbox" name="interets" value="Technologie / IA"><span>Technologie / IA</span></label>
+          <label class="check"><input type="checkbox" name="interets" value="Événements / Networking"><span>Événements / Networking</span></label>
+          <label class="check"><input type="checkbox" name="interets" value="Entrepreneuriat"><span>Entrepreneuriat</span></label>
+          <label class="check"><input type="checkbox" name="interets" value="Communication"><span>Communication</span></label>
+          <label class="check"><input type="checkbox" name="interets" value="Design / Création"><span>Design / Création</span></label>
+          <label class="check"><input type="checkbox" name="interets" value="Autre" id="interetAutre"><span>Autre</span></label>
+        </div>
+        <input type="text" id="interetAutreTxt" name="interetAutreTxt" class="other" placeholder="Si autre, précisez…" maxlength="100" disabled aria-label="Autre centre d’intérêt">
+      </fieldset>
+
+      <!-- 5. Source -->
+      <fieldset class="card card--wide">
+        <legend><span class="badge"><svg><use href="#i-mega"/></svg></span>5. Comment avez-vous connu le Club ARSII IIT ?</legend>
+
+        <div class="choices choices--row">
+          <label class="radio"><input type="radio" name="source" value="Instagram"><span>Instagram</span></label>
+          <label class="radio"><input type="radio" name="source" value="Par un(e) ami(e)"><span>Par un(e) ami(e)</span></label>
+          <label class="radio"><input type="radio" name="source" value="Événement à l’IIT"><span>Événement à l’IIT</span></label>
+          <label class="radio radio--other"><input type="radio" name="source" value="Autre" id="sourceAutre"><span>Autre</span></label>
+          <input type="text" id="sourceAutreTxt" name="sourceAutreTxt" class="other" placeholder="Si autre, précisez…" maxlength="100" disabled aria-label="Autre source">
+        </div>
+      </fieldset>
+
+      <!-- Honeypot anti-spam (invisible pour les humains) -->
+      <div class="hp" aria-hidden="true">
+        <label>Ne pas remplir <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <!-- Submit -->
+      <div class="submit">
+        <button type="submit" class="btn" id="submitBtn">
+          <svg><use href="#i-send"/></svg>
+          <span class="btn__label">Envoyer ma candidature</span>
+          <span class="btn__spinner" aria-hidden="true"></span>
+        </button>
+        <p class="privacy">
+          <svg><use href="#i-shield"/></svg>
+          <span>Vos informations sont sécurisées<br>et ne seront utilisées que pour les besoins du Club ARSII IIT.</span>
+        </p>
+      </div>
+
+      <p class="form__status" id="formStatus" role="status" aria-live="polite"></p>
+    </form>
+
+    <!-- ============ SUCCESS ============ -->
+    <section id="success" class="card success" hidden tabindex="-1">
+      <svg class="success__icon"><use href="#i-check"/></svg>
+      <h2>Merci, ta candidature est envoyée !</h2>
+      <p>Nous revenons vers toi très vite par email. En attendant, retrouve-nous sur Instagram.</p>
+      <a class="btn btn--ghost" href="https://www.instagram.com/arsii_iit/" target="_blank" rel="noopener noreferrer">
+        <svg><use href="#i-insta"/></svg><span>@arsii_iit</span>
+      </a>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="footer__photo" aria-hidden="true"></div>
+
+    <div class="footer__center">
+      <div class="footer__place">
+        <svg><use href="#i-pin"/></svg>
+        <div>
+          <p><a href="https://www.google.com/maps/dir/IIT+-+Institut+International+de+Technologie,+Rte+de+Tunis,+Sakiet+Ezzit//@34.8409259,10.7549073,17.9z/data=!4m8!4m7!1m5!1m1!1s0x1301d179b20acfe7:0x7a82ded557c84c94!2m2!1d10.7551184!2d34.8410896!1m0?entry=ttu&amp;g_ep=EgoyMDI2MTAxMi4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="footer__address-link" title="Localisation IIT Campus Ons sur Google Maps">Institut International<br>de Technologie (IIT)</a></p>
+          <p class="footer__slogan">Plus qu’un club,<br>une famille !</p>
+        </div>
+      </div>
+
+      <div class="footer__social">
+        <h2>Suivez-nous sur nos réseaux</h2>
+        <a href="https://www.instagram.com/arsii_iit/" target="_blank" rel="noopener noreferrer">
+          <svg><use href="#i-insta"/></svg><span>@arsii_iit</span><svg class="chev"><use href="#i-arrow"/></svg>
+        </a>
+        <a href="https://arsii-association.org/" target="_blank" rel="noopener noreferrer" title="Association ARSII">
+          <svg><use href="#i-link"/></svg><span>https://arsii-association.org/</span><svg class="chev"><use href="#i-arrow"/></svg>
+        </a>
+        <a href="https://iit.tn/" target="_blank" rel="noopener noreferrer" title="Accueil - IIT">
+          <svg><use href="#i-link"/></svg><span>https://iit.tn/</span><svg class="chev"><use href="#i-arrow"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <img class="footer__logo" src="assets/img/logo-light.png" alt="Club ARSII IIT" width="900" height="313" loading="lazy">
+  </footer>
+</div>
+
+<script src="js/main.js" defer></script>
+</body>
+</html>

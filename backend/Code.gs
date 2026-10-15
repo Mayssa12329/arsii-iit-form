@@ -1,0 +1,52 @@
+/**
+ * Club ARSII IIT – Réception des adhésions dans Google Sheets
+ * Collez ce code dans script.google.com (voir README.md).
+ */
+const SHEET_NAME = 'Adhésions';
+const NOTIFY_EMAIL = '';   // ex: 'arsii.iit@gmail.com' → reçoit un email à chaque candidature (laisser vide pour désactiver)
+
+const HEADERS = ['Date', 'Nom', 'Prénom', 'Email', 'Téléphone', 'Niveau', 'Filière',
+                 'Année', 'Motivation', 'Centres d’intérêt', 'Source'];
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const d = JSON.parse(e.postData.contents);
+
+    if (d.website) return json({ ok: true });                 // honeypot
+    if (!d.nom || !d.prenom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) {
+      return json({ ok: false, error: 'invalid' });
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(HEADERS);
+      sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#129891').setFontColor('#ffffff');
+      sheet.setFrozenRows(1);
+    }
+
+    // Anti-doublon par email
+    const emails = sheet.getLastRow() > 1 ? sheet.getRange(2, 4, sheet.getLastRow() - 1, 1).getValues().flat() : [];
+    if (emails.includes(d.email)) return json({ ok: true, duplicate: true });
+
+    sheet.appendRow([new Date(), d.nom, d.prenom, d.email, "'" + d.telephone, d.niveau, d.filiere,
+                     d.annee, d.motivation, d.interets, d.source]);
+
+    if (NOTIFY_EMAIL) {
+      MailApp.sendEmail(NOTIFY_EMAIL, 'Nouvelle adhésion ARSII IIT : ' + d.prenom + ' ' + d.nom,
+        'Email : ' + d.email + '\nTéléphone : ' + d.telephone + '\nFilière : ' + d.filiere +
+        ' (' + d.niveau + ', ' + d.annee + ')\n\nMotivation :\n' + d.motivation);
+    }
+    return json({ ok: true });
+  } catch (err) {
+    return json({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}

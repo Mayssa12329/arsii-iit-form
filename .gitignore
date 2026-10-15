@@ -1,0 +1,21 @@
+# Dépendances
+node_modules/
+
+# Données sensibles & variables d'environnement
+.env
+.env.local
+
+# Base de données & données personnelles (RGPD / confidentialité)
+data/
+*.db
+*.sqlite
+
+# Fichiers de test temporaires
+test-*.html
+screenshots/
+
+# Logs & caches
+npm-debug.log*
+yarn-debug.log*
+.DS_Store
+Thumbs.db

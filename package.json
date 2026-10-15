@@ -1,0 +1,22 @@
+{
+  "name": "arsii-iit-form",
+  "version": "1.0.0",
+  "description": "Formulaire d'adhésion - Club ARSII IIT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "arsii",
+    "iit",
+    "form"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "nodemailer": "^10.1.1"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
