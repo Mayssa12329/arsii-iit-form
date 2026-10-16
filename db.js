@@ -64,11 +64,12 @@ function insertAdhesion(data) {
   const stmt = db.prepare(`
     INSERT INTO adhesions (
       created_at, nom, prenom, email, telephone,
-      niveau, filiere, annee, motivation, interets, source
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      niveau, filiere, annee, motivation, interets, source, email_sent
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const createdAt = new Date().toISOString();
+  const createdAt = data.created_at || new Date().toISOString();
+  const emailSent = (data.email_sent !== undefined && data.email_sent !== null) ? Number(data.email_sent) : 0;
   const info = stmt.run(
     createdAt,
     data.nom,
@@ -80,7 +81,8 @@ function insertAdhesion(data) {
     data.annee,
     data.motivation || '',
     data.interets || '',
-    data.source || ''
+    data.source || '',
+    emailSent
   );
 
   syncJsonBackup();
@@ -156,6 +158,14 @@ function deleteAdhesionById(id) {
   syncCsvBackup();
 }
 
+function deleteAdhesionByEmail(email) {
+  if (!email) return;
+  const stmt = db.prepare('DELETE FROM adhesions WHERE LOWER(email) = ?');
+  stmt.run(email.trim().toLowerCase());
+  syncJsonBackup();
+  syncCsvBackup();
+}
+
 function clearAllAdhesions() {
   db.exec('DELETE FROM adhesions;');
   try {
@@ -166,14 +176,19 @@ function clearAllAdhesions() {
 }
 
 function saveOrUpdateAdhesion(data) {
-  const existing = getAdhesionByEmail(data.email.trim());
+  const cleanEmail = data.email.trim().toLowerCase();
+  const existing = getAdhesionByEmail(cleanEmail);
   if (existing) {
+    const updatedAt = data.created_at || new Date().toISOString();
+    const emailSent = (data.email_sent !== undefined && data.email_sent !== null)
+      ? Number(data.email_sent)
+      : existing.email_sent;
     const stmt = db.prepare(`
       UPDATE adhesions SET
-        nom = ?, prenom = ?, telephone = ?, niveau = ?, filiere = ?, annee = ?, motivation = ?, interets = ?, source = ?, created_at = ?
+        nom = ?, prenom = ?, telephone = ?, niveau = ?, filiere = ?, annee = ?,
+        motivation = ?, interets = ?, source = ?, created_at = ?, email_sent = ?
       WHERE id = ?
     `);
-    const updatedAt = new Date().toISOString();
     stmt.run(
       data.nom,
       data.prenom,
@@ -185,6 +200,7 @@ function saveOrUpdateAdhesion(data) {
       data.interets || '',
       data.source || '',
       updatedAt,
+      emailSent,
       existing.id
     );
     syncJsonBackup();
@@ -219,6 +235,7 @@ module.exports = {
   getPendingEmailAdhesions,
   markEmailSent,
   deleteAdhesionById,
+  deleteAdhesionByEmail,
   clearAllAdhesions,
   exportCSV,
 };

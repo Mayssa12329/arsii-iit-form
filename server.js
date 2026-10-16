@@ -1,8 +1,9 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById, getPendingEmailAdhesions, markEmailSent } = require('./db');
+const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById, deleteAdhesionByEmail, getPendingEmailAdhesions, markEmailSent } = require('./db');
 const { sendWelcomeEmail, buildWelcomeEmailHtml } = require('./mailer');
+const { startSyncService, syncDeletePerson, syncClearAll } = require('./sync-emails');
 
 // Chargement basique d'un fichier .env s'il existe
 const envPath = path.join(__dirname, '.env');
@@ -64,7 +65,7 @@ function sendJson(res, statusCode, data) {
   res.end(JSON.stringify(data));
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // CORS Preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -102,7 +103,10 @@ const server = http.createServer((req, res) => {
         if (!data.nom || data.nom.trim().length < 2) errors.push('Le nom est requis (minimum 2 caractères).');
         if (!data.prenom || data.prenom.trim().length < 2) errors.push('Le prénom est requis (minimum 2 caractères).');
         if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email.trim())) errors.push('Une adresse email valide est requise.');
-        if (!data.telephone || data.telephone.trim().length < 8) errors.push('Un numéro de téléphone valide est requis.');
+        
+        const cleanDigits = (data.telephone || '').replace(/[\s.\-()]/g, '').replace(/^(\+|00)216/, '');
+        if (!data.telephone || !/^\d{8}$/.test(cleanDigits)) errors.push('Un numéro de téléphone tunisien valide est requis (8 chiffres).');
+        
         if (!data.niveau || !data.niveau.trim()) errors.push('Le niveau d’études est requis.');
         if (!data.filiere || data.filiere.trim().length < 2) errors.push('La filière est requise.');
         if (!data.annee || !data.annee.trim()) errors.push('L’année d’études est requise.');
@@ -115,11 +119,32 @@ const server = http.createServer((req, res) => {
         const cleanEmail = data.email.trim().toLowerCase();
         const cleanTel = data.telephone.trim();
 
+        // 🛑 CONDITIONS STRICTES D'UNICITÉ :
+        // Un utilisateur ne peut pas s'inscrire deux fois avec le même email ou le même téléphone
         const existingEmail = getAdhesionByEmail(cleanEmail);
+        if (existingEmail && !data._isSync) {
+          return sendJson(res, 400, {
+            success: false,
+            duplicateEmail: true,
+            message: 'Cette adresse email est déjà inscrite. Chaque adhérent ne peut s’inscrire qu’une seule fois.',
+            errors: ['Cette adresse email est déjà inscrite.']
+          });
+        }
+
+        const existingPhone = getAdhesionByPhone(cleanTel);
+        if (existingPhone && !data._isSync) {
+          return sendJson(res, 400, {
+            success: false,
+            duplicatePhone: true,
+            message: 'Ce numéro de téléphone est déjà inscrit. Chaque adhérent ne peut s’inscrire qu’une seule fois.',
+            errors: ['Ce numéro de téléphone est déjà inscrit.']
+          });
+        }
+
         let recordId;
 
-        if (existingEmail) {
-          // Mise à jour de l'adhésion existante pour permettre la réinscription / renvoi de confirmation
+        if (existingEmail && data._isSync) {
+          // Mise à jour de l'adhésion en cas de synchronisation entre serveurs
           saveOrUpdateAdhesion({
             nom: data.nom.trim(),
             prenom: data.prenom.trim(),
@@ -131,9 +156,11 @@ const server = http.createServer((req, res) => {
             motivation: (data.motivation || '').trim(),
             interets: data.interets || '',
             source: data.source || '',
+            created_at: data.created_at || undefined,
+            email_sent: data.email_sent !== undefined ? Number(data.email_sent) : undefined,
           });
           recordId = existingEmail.id;
-          console.log(`[Base de données] Adhésion existante mise à jour : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${recordId}`);
+          console.log(`[Base de données] Adhésion mise à jour via sync : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${recordId}`);
         } else {
           // Insertion d'une nouvelle adhésion dans la base de données (< 5ms)
           const result = insertAdhesion({
@@ -147,6 +174,8 @@ const server = http.createServer((req, res) => {
             motivation: (data.motivation || '').trim(),
             interets: data.interets || '',
             source: data.source || '',
+            created_at: data.created_at || undefined,
+            email_sent: data.email_sent !== undefined ? Number(data.email_sent) : 0,
           });
           recordId = result.id;
           console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${recordId}`);
@@ -178,6 +207,7 @@ const server = http.createServer((req, res) => {
                 motivation: (data.motivation || '').trim(),
                 interets: data.interets || '',
                 source: data.source || '',
+                _isSync: true,
               });
               const parsed = new URL(`${renderUrl}/api/adhesions`);
               const mod = parsed.protocol === 'https:' ? https : http;
@@ -330,6 +360,20 @@ const server = http.createServer((req, res) => {
     }
   }
 
+  // 2c. GET /api/check-phone?phone=... - Vérifie si un téléphone est déjà inscrit
+  if (req.method === 'GET' && rawPath === '/api/check-phone') {
+    try {
+      const urlObj = new URL(req.url, 'http://localhost');
+      const phone = (urlObj.searchParams.get('phone') || '').trim();
+      if (!phone) return sendJson(res, 400, { exists: false, error: 'Téléphone manquant' });
+      const existing = getAdhesionByPhone(phone);
+      return sendJson(res, 200, { exists: !!existing });
+    } catch (err) {
+      console.error('Erreur API GET /api/check-phone :', err);
+      return sendJson(res, 500, { exists: false });
+    }
+  }
+
   // 3. GET /api/adhesions/export.csv - Export CSV Excel
   if (req.method === 'GET' && rawPath === '/api/adhesions/export.csv') {
     if (!isAdminAuthorized(req)) {
@@ -352,17 +396,31 @@ const server = http.createServer((req, res) => {
     }
   }
 
-  // 4. DELETE /api/adhesions - Vider la base de données
+  // 4. DELETE /api/adhesions - Supprimer un adhérent ou vider toute la base (synchronisé)
   if (req.method === 'DELETE' && rawPath === '/api/adhesions') {
     if (!isAdminAuthorized(req)) {
       return sendJson(res, 401, { success: false, message: 'Accès protégé : clé admin requise' });
     }
     try {
-      clearAllAdhesions();
-      return sendJson(res, 200, { success: true, message: 'Base de données vidée avec succès' });
+      const urlObj = new URL(req.url, 'http://localhost');
+      const email = (urlObj.searchParams.get('email') || '').trim().toLowerCase();
+      const id = urlObj.searchParams.get('id');
+
+      if (email) {
+        await syncDeletePerson({ email });
+        return sendJson(res, 200, { success: true, message: `Adhésion pour ${email} supprimée sur les deux bases` });
+      }
+
+      if (id) {
+        await syncDeletePerson({ id });
+        return sendJson(res, 200, { success: true, message: `Adhésion #${id} supprimée sur les deux bases` });
+      }
+
+      await syncClearAll();
+      return sendJson(res, 200, { success: true, message: 'Base de données vidée avec succès sur les deux bases' });
     } catch (err) {
       console.error('Erreur DELETE /api/adhesions :', err);
-      return sendJson(res, 500, { success: false, message: 'Erreur lors du vidage' });
+      return sendJson(res, 500, { success: false, message: 'Erreur lors de la suppression' });
     }
   }
 
@@ -407,42 +465,8 @@ server.listen(PORT, () => {
   console.log(`Club ARSII IIT Formulaire disponible sur http://localhost:${PORT}`);
   console.log(`Base de données active : data/adhesions.db`);
 
-  // ✉️ Envoi automatique des mails de confirmation à toutes les personnes en attente dans la base
-  setImmediate(async () => {
-    try {
-      const pending = getPendingEmailAdhesions();
-      if (pending.length === 0) {
-        console.log('[Email] ✅ Toutes les personnes ont déjà reçu leur mail de confirmation.');
-        return;
-      }
-      console.log(`[Email] 📋 ${pending.length} personne(s) sans mail de confirmation détectée(s). Envoi en cours...`);
-      let sent = 0;
-      let failed = 0;
-      for (const person of pending) {
-        try {
-          const emailRes = await sendWelcomeEmail({
-            prenom: person.prenom,
-            nom: person.nom,
-            email: person.email,
-          });
-          if (emailRes && emailRes.success) {
-            markEmailSent(person.id);
-            sent++;
-            console.log(`[Email] ✅ Mail envoyé à ${person.email} (ID #${person.id})`);
-          } else {
-            failed++;
-            console.error(`[Email] ⚠️ Échec envoi à ${person.email} :`, emailRes ? emailRes.error : 'inconnu');
-          }
-        } catch (err) {
-          failed++;
-          console.error(`[Email] ❌ Erreur envoi à ${person.email} :`, err.message);
-        }
-        // Pause 600ms entre chaque envoi pour éviter le rate-limiting Gmail
-        await new Promise(r => setTimeout(r, 600));
-      }
-      console.log(`[Email] 🎉 Résultat : ${sent} mail(s) envoyé(s), ${failed} échec(s).`);
-    } catch (err) {
-      console.error('[Email] ❌ Erreur lors de l\'envoi des mails au démarrage :', err.message);
-    }
-  });
+  // Lancement automatique et transparent de la synchronisation Render ↔ Local et de l'envoi garanti des emails
+  if (!process.env.RENDER) {
+    startSyncService();
+  }
 });

@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "sync": "node sync-emails.js"
+    "sync": "node sync-emails.js",
+    "clear-db": "node clear-db.js"
   },
   "keywords": [
     "arsii",
