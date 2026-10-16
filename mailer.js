@@ -17,6 +17,7 @@ if (fs.existsSync(envPath)) {
   });
 }
 
+// URLs distantes de secours (utilisées pour Brevo ou aperçu navigateur)
 const LOGO_URL              = 'https://i.imgur.com/VAeqWIg.png';
 const CAMPUS_URL            = 'https://i.imgur.com/NCic1bs.jpeg';
 const TITRE_BIENVENUE_URL   = 'https://i.imgur.com/f9i0Q1D.png';
@@ -56,10 +57,20 @@ async function getTransporter() {
   return transporter;
 }
 
-function buildWelcomeEmailHtml(prenom) {
+function buildWelcomeEmailHtml(prenom, useCid = false) {
   const p = prenom
     ? prenom.trim().charAt(0).toUpperCase() + prenom.trim().slice(1).toLowerCase()
     : 'Adhérent(e)';
+
+  const logoSrc        = useCid ? 'cid:logo_img'        : LOGO_URL;
+  const campusSrc      = useCid ? 'cid:campus_img'      : CAMPUS_URL;
+  const titreSrc       = useCid ? 'cid:titre_img'       : TITRE_BIENVENUE_URL;
+  const sloganSrc      = useCid ? 'cid:slogan_img'      : BANNIERE_SLOGAN_URL;
+  const qrInstaSrc     = useCid ? 'cid:qr_insta_img'    : QR_INSTAGRAM_URL;
+  const rejoinsSrc     = useCid ? 'cid:rejoins_img'     : REJOINS_URL;
+  const bienvenueSrc   = useCid ? 'cid:bienvenue_img'   : BIENVENUE_AVENTURE_URL;
+  const signatureSrc   = useCid ? 'cid:signature_img'   : SIGNATURE_URL;
+  const avionSrc       = useCid ? 'cid:avion_img'       : AVION_URL;
 
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="fr">
@@ -96,9 +107,9 @@ function buildWelcomeEmailHtml(prenom) {
 </head>
 <body style="margin:0;padding:0;background-color:#e6f6f4;font-family:'Nunito','Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
-<!-- Preheader invisible anti-spam et apercu boite de reception -->
-<div style="display:none;font-size:1px;color:#e6f6f4;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
-  Bienvenue ${p} au Club ARSII IIT ! Ton adhésion est bien confirmée. Découvre nos projets et notre communauté.
+<!-- Preheader officiel conforme pour aperçu direct en boîte de réception -->
+<div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+  Bienvenue ${p} au Club ARSII IIT ! Ton adhésion est bien confirmée. Découvre nos projets et notre communauté.&#847; &zwnj; &nbsp; &#8199; &shy;
 </div>
 
 <!-- Wrapper principal -->
@@ -116,11 +127,11 @@ function buildWelcomeEmailHtml(prenom) {
       <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg,#0e8ca1 0%,#169ab2 100%);">
         <tr>
           <td valign="middle" align="left" style="padding:18px 24px 12px 24px;">
-            <img src="${LOGO_URL}" alt="ARSII IIT" width="145"
+            <img src="${logoSrc}" alt="ARSII IIT" width="145"
               style="display:block;width:145px;max-width:145px;height:auto;border:0;"/>
           </td>
           <td valign="middle" align="right" style="padding:14px 24px 10px 10px;">
-            <img src="${BIENVENUE_AVENTURE_URL}" alt="Bienvenue dans l'aventure !" width="145"
+            <img src="${bienvenueSrc}" alt="Bienvenue dans l'aventure !" width="145"
               style="display:block;width:145px;height:auto;max-width:100%;border:0;margin-left:auto;" />
           </td>
         </tr>
@@ -130,7 +141,7 @@ function buildWelcomeEmailHtml(prenom) {
       <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
         <tr>
           <td style="padding:0;line-height:0;font-size:0;max-height:150px;overflow:hidden;">
-            <img src="${CAMPUS_URL}" alt="Campus IIT Sfax" width="600" height="150"
+            <img src="${campusSrc}" alt="Campus IIT Sfax" width="600" height="150"
               style="display:block;width:100%;max-width:600px;height:150px;max-height:150px;object-fit:cover;object-position:center 30%;border:0;"/>
           </td>
         </tr>
@@ -175,7 +186,7 @@ function buildWelcomeEmailHtml(prenom) {
 
           <!-- ─── TITRE : BIENVENUE AU CLUB ARSII IIT ! ─── -->
           <div style="margin:4px 0 16px 0;text-align:left;">
-            <img src="${TITRE_BIENVENUE_URL}" alt="Bienvenue au Club ARSII IIT !" width="440"
+            <img src="${titreSrc}" alt="Bienvenue au Club ARSII IIT !" width="440"
               style="display:block;width:100%;max-width:440px;height:auto;border:0;" />
           </div>
 
@@ -203,7 +214,7 @@ function buildWelcomeEmailHtml(prenom) {
 
           <!-- ─── 3. ENCADRE SLOGAN : ENSEMBLE, INNOVONS, PARTAGEONS ET AVANCONS ! ─── -->
           <div style="margin:0 0 22px 0;text-align:center;">
-            <img src="${BANNIERE_SLOGAN_URL}" alt="Ensemble, innovons, partageons et avan&ccedil;ons !" width="540"
+            <img src="${sloganSrc}" alt="Ensemble, innovons, partageons et avan&ccedil;ons !" width="540"
               style="display:block;width:100%;max-width:540px;height:auto;border:0;margin:0 auto;" />
           </div>
 
@@ -215,7 +226,7 @@ function buildWelcomeEmailHtml(prenom) {
 
                 <!-- QR Code Instagram ARSII_IIT (non cliquable, uniquement pour être scanné) -->
                 <td valign="middle" width="90" style="width:90px;padding-right:14px;">
-                  <img src="${QR_INSTAGRAM_URL}" alt="Scanner pour rejoindre ARSII IIT sur Instagram" width="90" height="90"
+                  <img src="${qrInstaSrc}" alt="Scanner pour rejoindre ARSII IIT sur Instagram" width="90" height="90"
                     style="display:block;width:90px;height:90px;border:0;pointer-events:none;cursor:default;"/>
                 </td>
 
@@ -240,8 +251,8 @@ function buildWelcomeEmailHtml(prenom) {
 
                 <!-- Droite : "Rejoins la communaute ! ♡" en ecriture manuscrite penchee avec coeur -->
                 <td valign="middle" width="130" style="width:130px;padding-left:10px;text-align:center;">
-                  <img src="${REJOINS_URL}" alt="Rejoins la communaut&eacute; ! &hearts;" width="125"
-                    style="display:block;width:125px;height:auto;max-width:100%;border:0;margin:0 auto;" />
+                  <img src="${rejoinsSrc}" alt="Rejoins la communaut&eacute; ! &hearts;" width="125"
+                    style="display:block;width:125px;height:auto;max-width:100%;border:0;margin-left:auto;" />
                 </td>
 
               </tr></table>
@@ -253,13 +264,13 @@ function buildWelcomeEmailHtml(prenom) {
             <tr>
               <!-- Gauche : Signature -->
               <td valign="middle" align="left">
-                <img src="${SIGNATURE_URL}" alt="&Agrave; tr&egrave;s bient&ocirc;t au Club ARSII IIT ! L'&eacute;quipe ARSII IIT" width="215"
+                <img src="${signatureSrc}" alt="&Agrave; tr&egrave;s bient&ocirc;t au Club ARSII IIT ! L'&eacute;quipe ARSII IIT" width="215"
                   style="display:block;width:215px;height:auto;max-width:100%;border:0;" />
               </td>
 
               <!-- Droite : Avion en papier origami avec trainee en pointilles boucles -->
               <td valign="bottom" align="right" width="140" style="width:140px;padding-bottom:4px;">
-                <img src="${AVION_URL}" alt="Avion en papier" width="130"
+                <img src="${avionSrc}" alt="Avion en papier" width="130"
                   style="display:block;width:130px;height:auto;max-width:100%;border:0;margin-left:auto;" />
               </td>
             </tr>
@@ -288,7 +299,7 @@ function buildWelcomeEmailHtml(prenom) {
         <tr>
           <!-- Logo ARSII IIT gauche -->
           <td valign="middle" align="left" width="45%">
-            <img src="${LOGO_URL}" alt="ARSII IIT" width="125" height="auto"
+            <img src="${logoSrc}" alt="ARSII IIT" width="125" height="auto"
               style="display:block;width:125px;height:auto;border:0;"/>
           </td>
           <!-- INNOVER • CONNECTER • IMPACTER droite -->
@@ -299,13 +310,13 @@ function buildWelcomeEmailHtml(prenom) {
         </tr>
       </table>
 
-      <!-- Mentions legales & infos club -->
+      <!-- Mentions legales & infos club conformes anti-spam -->
       <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
         style="margin-top:16px;border-top:1px solid #144453;padding-top:14px;">
         <tr><td align="center"
           style="font-family:'Nunito',Arial,sans-serif;font-size:11px;color:#508292;line-height:1.7;">
           Association ARSII &bull; Institut International de Technologie &mdash; IIT Sfax<br/>
-          Cet email vous est envoy&eacute; suite &agrave; votre demande d&apos;adh&eacute;sion en ligne.
+          Cet email officiel de confirmation vous est envoy&eacute; suite &agrave; votre demande d&apos;adh&eacute;sion en ligne au Club ARSII IIT.
         </td></tr>
       </table>
     </td>
@@ -365,6 +376,7 @@ function sendViaBrevoAPI({ apiKey, senderEmail, toEmail, toName, subject, htmlCo
   });
 }
 
+// ── Fonction principale d'envoi ──────────────────────────────────────────────
 async function sendWelcomeEmail({ prenom, nom, email }) {
   try {
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -376,17 +388,19 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       ? prenom.trim().charAt(0).toUpperCase() + prenom.trim().slice(1).toLowerCase()
       : 'Adhérent(e)';
     const senderEmail = process.env.SMTP_USER || 'arsii.iit189@gmail.com';
-    const htmlContent = buildWelcomeEmailHtml(prenom);
     const subject     = `Confirmation d'adhésion au Club ARSII IIT – ${p}`;
     const textContent = [
       `Bonjour ${p} !`, '',
-      `Ton adhésion au Club ARSII IIT est confirmée !`, '',
-      `Nous avons bien reçu ton formulaire d'adhésion au Club ARSII IIT. 🎉`,
+      `Ton adhésion au Club ARSII IIT est bien confirmée ! 🎉`, '',
+      `Nous avons bien reçu ton formulaire d'adhésion au Club ARSII IIT.`,
       `Merci pour ton intérêt ! Nous sommes ravis de te voir rejoindre notre communauté.`, '',
-      `Au Club ARSII IIT, tu pourras participer à des événements, découvrir de nouvelles idées,`,
-      `travailler sur des projets innovants et rencontrer des étudiants passionnés par la technologie.`, '',
+      `Au Club ARSII IIT, tu pourras :`,
+      `- Participer à des événements et workshops enrichissants,`,
+      `- Découvrir de nouvelles idées et technologies,`,
+      `- Travailler sur des projets innovants,`,
+      `- Rencontrer des étudiants passionnés et élargir ton réseau.`, '',
       `Ensemble, innovons, partageons et avançons !`, '',
-      `Suis-nous sur Instagram : https://www.instagram.com/arsii_iit/`, '',
+      `Suis-nous sur Instagram pour ne rien manquer : https://www.instagram.com/arsii_iit/`, '',
       `À très bientôt au Club ARSII IIT !`,
       `L'équipe ARSII IIT`, '',
       `INNOVER • CONNECTER • IMPACTER`,
@@ -403,27 +417,69 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
         toEmail    : cleanEmail,
         toName     : `${p} ${(nom || '').trim()}`.trim(),
         subject,
-        htmlContent,
+        htmlContent: buildWelcomeEmailHtml(prenom, false),
         textContent,
       });
       console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${result.messageId}`);
       return { success: true, messageId: result.messageId };
     }
 
-    // ── FALLBACK : SMTP nodemailer (usage local uniquement) ──────────────────
-    console.log(`[Email] Envoi via SMTP -> ${cleanEmail}`);
+    // ── FALLBACK : SMTP nodemailer (Gmail officiel avec images CID intégrées) ─
+    console.log(`[Email] Envoi optimisé anti-spam (Gmail SMTP) -> ${cleanEmail}`);
     const mailClient  = await getTransporter();
-    const fromAddress = process.env.SMTP_FROM || `"Club ARSII IIT" <${senderEmail}>`;
-    const replyAddress = process.env.SMTP_REPLY_TO || senderEmail;
+    const fromAddress = `"Club ARSII IIT" <${senderEmail}>`;
+    const replyAddress = senderEmail;
+
+    // Pièces jointes CID : évite le dossier SPAM causé par les hébergeurs d'images externes
+    const imgDir = path.join(__dirname, 'assets', 'img');
+    const attachmentDefs = [
+      { cid: 'logo_img',      file: 'logo-light.png',         name: 'logo-arsii.png' },
+      { cid: 'bienvenue_img', file: 'bienvenue-aventure.png', name: 'bienvenue-aventure.png' },
+      { cid: 'campus_img',    file: 'iit-campus.jpg',         name: 'campus-iit.jpg' },
+      { cid: 'titre_img',     file: 'titre-bienvenue.png',    name: 'titre-bienvenue.png' },
+      { cid: 'slogan_img',    file: 'banniere-slogan.png',    name: 'banniere-slogan.png' },
+      { cid: 'qr_insta_img',  file: 'qr-instagram.png',       name: 'qr-instagram.png' },
+      { cid: 'rejoins_img',   file: 'rejoins-communaute.png', name: 'rejoins-communaute.png' },
+      { cid: 'signature_img', file: 'signature-equipe.png',   name: 'signature-equipe.png' },
+      { cid: 'avion_img',     file: 'avion-papier.png',       name: 'avion-papier.png' },
+    ];
+
+    const attachments = [];
+    let canUseCid = true;
+
+    for (const def of attachmentDefs) {
+      const fullPath = path.join(imgDir, def.file);
+      if (fs.existsSync(fullPath)) {
+        attachments.push({
+          filename: def.name,
+          path: fullPath,
+          cid: def.cid,
+          contentDisposition: 'inline',
+        });
+      } else {
+        canUseCid = false;
+      }
+    }
+
+    const htmlToSend = buildWelcomeEmailHtml(prenom, canUseCid);
+
     const info = await mailClient.sendMail({
       from   : fromAddress,
       replyTo: replyAddress,
       to     : cleanEmail,
       subject,
-      priority: 'normal',
       text   : textContent,
-      html   : htmlContent,
+      html   : htmlToSend,
+      attachments: canUseCid ? attachments : [],
+      headers: {
+        'X-Mailer': 'Club ARSII IIT Mailer System',
+        'X-Entity-Ref-ID': `arsii-${Date.now()}-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '')}`,
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+        'List-Id': '<club-arsii-iit.sfax>',
+        'Feedback-ID': `adhesion:club-arsii:gmail`,
+      },
     });
+
     console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
 
