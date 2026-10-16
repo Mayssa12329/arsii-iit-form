@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code — Formulaire d'Adhésion ARSII IIT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #0b343d 0%, #005f56 50%, #008477 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #2c4c56;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 36px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+    }
+    .badge {
+      display: inline-block;
+      background: #e6f6f4;
+      color: #008477;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 50px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      color: #0b343d;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      font-size: 14px;
+      color: #52737d;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .qr-container {
+      background: #ffffff;
+      border: 3px solid #e0f2ef;
+      border-radius: 20px;
+      padding: 16px;
+      display: inline-block;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(0, 132, 119, 0.08);
+    }
+    .qr-img {
+      display: block;
+      width: 260px;
+      height: 260px;
+      max-width: 100%;
+      border-radius: 12px;
+    }
+    .url-pill {
+      background: #f4faf9;
+      border: 1px dashed #009e90;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #007367;
+      word-break: break-all;
+      margin-bottom: 24px;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .btn-primary {
+      background: #009e90;
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: #008477;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: #e6f6f4;
+      color: #007367;
+    }
+    .btn-secondary:hover {
+      background: #d0f0eb;
+      transform: translateY(-2px);
+    }
+    @media print {
+      body { background: #ffffff; }
+      .actions, .badge { display: none; }
+      .card { box-shadow: none; padding: 0; max-width: 100%; }
+      .qr-img { width: 360px; height: 360px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="badge">Club ARSII IIT • Sfax</div>
+    <h1>Scanne pour Adhérer</h1>
+    <p class="subtitle">Scannez ce QR Code avec l'appareil photo de votre smartphone pour accéder directement au formulaire d'adhésion.</p>
+
+    <div class="qr-container">
+      <img src="qr-code-formulaire.png" alt="QR Code Formulaire ARSII IIT" class="qr-img">
+    </div>
+
+    <div class="url-pill">
+      https://arsii-iit-form.onrender.com
+    </div>
+
+    <div class="actions">
+      <a href="qr-code-formulaire.png" download="qr-code-arsii-iit.png" class="btn btn-primary">
+        ⬇️ Télécharger PNG
+      </a>
+      <a href="qr-code-formulaire.svg" download="qr-code-arsii-iit.svg" class="btn btn-secondary">
+        ⬇️ Télécharger SVG
+      </a>
+      <button onclick="window.print()" class="btn btn-secondary">
+        🖨️ Imprimer
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>
