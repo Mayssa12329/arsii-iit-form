@@ -105,7 +105,7 @@ const server = http.createServer(async (req, res) => {
         if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email.trim())) errors.push('Une adresse email valide est requise.');
         
         const cleanDigits = (data.telephone || '').replace(/[\s.\-()]/g, '').replace(/^(\+|00)216/, '');
-        if (!data.telephone || !/^\d{8}$/.test(cleanDigits)) errors.push('Un numéro de téléphone tunisien valide est requis (8 chiffres).');
+        if (!data.telephone || !/^\d{8}$/.test(cleanDigits)) errors.push('Entrez un numéro valide (8 chiffres).');
         
         if (!data.niveau || !data.niveau.trim()) errors.push('Le niveau d’études est requis.');
         if (!data.filiere || data.filiere.trim().length < 2) errors.push('La filière est requise.');

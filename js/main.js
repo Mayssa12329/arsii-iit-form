@@ -125,7 +125,7 @@
     email:      v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Entrez une adresse email valide (ex : nom@domaine.com).',
     telephone:  v => {
       const d = v.replace(/[\s.\-()]/g, '').replace(/^(\+|00)216/, '');
-      return /^\d{8}$/.test(d) || 'Entrez un numéro tunisien valide (8 chiffres, ex : +216 20 123 456).';
+      return /^\d{8}$/.test(d) || 'Entrez un numéro valide (8 chiffres).';
     },
     niveau:     v => !!v || 'Sélectionnez votre niveau d’études.',
     filiere:    v => v.trim().length >= 2 || 'Indiquez votre filière ou spécialité.',
