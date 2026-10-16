@@ -115,62 +115,49 @@ const server = http.createServer((req, res) => {
         const cleanEmail = data.email.trim().toLowerCase();
         const cleanTel = data.telephone.trim();
 
-        // Vérification stricte anti-redondance : interdiction de remplir deux fois avec le même email OU le même téléphone
         const existingEmail = getAdhesionByEmail(cleanEmail);
-        const existingPhone = getAdhesionByPhone(cleanTel);
-
-        if (existingEmail && existingPhone) {
-          console.warn(`[Base de données] Rejet doublon strict (Email et Téléphone déjà inscrits) : ${cleanEmail} / ${cleanTel}`);
-          return sendJson(res, 409, {
-            success: false,
-            duplicateEmail: true,
-            duplicatePhone: true,
-            message: '⛔ Cet email et ce numéro de téléphone sont déjà inscrits.',
-          });
-        }
+        let recordId;
 
         if (existingEmail) {
-          console.warn(`[Base de données] Rejet doublon strict Email : ${cleanEmail} (ID #${existingEmail.id})`);
-          return sendJson(res, 409, {
-            success: false,
-            duplicateEmail: true,
-            message: '⛔ Cette adresse email est déjà inscrite.',
-            id: existingEmail.id,
+          // Mise à jour de l'adhésion existante pour permettre la réinscription / renvoi de confirmation
+          saveOrUpdateAdhesion({
+            nom: data.nom.trim(),
+            prenom: data.prenom.trim(),
+            email: cleanEmail,
+            telephone: cleanTel,
+            niveau: data.niveau.trim(),
+            filiere: data.filiere.trim(),
+            annee: data.annee.trim(),
+            motivation: (data.motivation || '').trim(),
+            interets: data.interets || '',
+            source: data.source || '',
           });
-        }
-
-        if (existingPhone) {
-          console.warn(`[Base de données] Rejet doublon strict Téléphone : ${cleanTel} (ID #${existingPhone.id})`);
-          return sendJson(res, 409, {
-            success: false,
-            duplicatePhone: true,
-            message: '⛔ Ce numéro de téléphone est déjà inscrit.',
-            id: existingPhone.id,
+          recordId = existingEmail.id;
+          console.log(`[Base de données] Adhésion existante mise à jour : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${recordId}`);
+        } else {
+          // Insertion d'une nouvelle adhésion dans la base de données (< 5ms)
+          const result = insertAdhesion({
+            nom: data.nom.trim(),
+            prenom: data.prenom.trim(),
+            email: cleanEmail,
+            telephone: cleanTel,
+            niveau: data.niveau.trim(),
+            filiere: data.filiere.trim(),
+            annee: data.annee.trim(),
+            motivation: (data.motivation || '').trim(),
+            interets: data.interets || '',
+            source: data.source || '',
           });
+          recordId = result.id;
+          console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${recordId}`);
         }
-
-        // Insertion unique de la nouvelle adhésion dans la base de données (< 5ms)
-        const result = insertAdhesion({
-          nom: data.nom.trim(),
-          prenom: data.prenom.trim(),
-          email: cleanEmail,
-          telephone: cleanTel,
-          niveau: data.niveau.trim(),
-          filiere: data.filiere.trim(),
-          annee: data.annee.trim(),
-          motivation: (data.motivation || '').trim(),
-          interets: data.interets || '',
-          source: data.source || '',
-        });
-
-        console.log(`[Base de données] Nouvelle adhésion enregistrée : ${data.prenom} ${data.nom} (${cleanEmail}) - ID #${result.id}`);
 
         // Réponse immédiate et ultra-rapide au navigateur (< 50ms) pour une expérience utilisateur instantanée
         sendJson(res, 201, {
           success: true,
           emailSent: true,
           message: `Candidature enregistrée ! Un email de confirmation officiel a été envoyé à ${cleanEmail}.`,
-          id: result.id,
+          id: recordId,
         });
 
         // Stockage simultané et immédiat sur Render si en local
@@ -221,7 +208,7 @@ const server = http.createServer((req, res) => {
           }).then(emailRes => {
             if (emailRes && emailRes.success) {
               console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
-              markEmailSent(result.id);
+              markEmailSent(recordId);
             } else {
               console.error(`[Email] ⚠️ Problème lors de l'envoi à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
             }
