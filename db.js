@@ -204,6 +204,8 @@ function getPendingEmailAdhesions() {
 function markEmailSent(id) {
   const stmt = db.prepare('UPDATE adhesions SET email_sent = 1 WHERE id = ?');
   stmt.run(id);
+  syncJsonBackup();
+  syncCsvBackup();
 }
 
 module.exports = {

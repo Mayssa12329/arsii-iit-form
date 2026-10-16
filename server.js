@@ -173,6 +173,45 @@ const server = http.createServer((req, res) => {
           id: result.id,
         });
 
+        // Stockage simultané et immédiat sur Render si en local
+        if (!process.env.RENDER && process.env.RENDER_URL) {
+          setImmediate(() => {
+            try {
+              const https = require('https');
+              const http = require('http');
+              const renderUrl = process.env.RENDER_URL.replace(/\/$/, '');
+              const postData = JSON.stringify({
+                nom: data.nom.trim(),
+                prenom: data.prenom.trim(),
+                email: cleanEmail,
+                telephone: cleanTel,
+                niveau: data.niveau.trim(),
+                filiere: data.filiere.trim(),
+                annee: data.annee.trim(),
+                motivation: (data.motivation || '').trim(),
+                interets: data.interets || '',
+                source: data.source || '',
+              });
+              const parsed = new URL(`${renderUrl}/api/adhesions`);
+              const mod = parsed.protocol === 'https:' ? https : http;
+              const reqRender = mod.request({
+                hostname: parsed.hostname,
+                port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+                path: parsed.pathname,
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(postData),
+                },
+                timeout: 8000,
+              });
+              reqRender.on('error', () => {});
+              reqRender.write(postData);
+              reqRender.end();
+            } catch (e) {}
+          });
+        }
+
         // Envoi automatique, fiable et garanti de l'email de confirmation en tâche de fond (asynchrone)
         setImmediate(() => {
           sendWelcomeEmail({
