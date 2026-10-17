@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById, deleteAdhesionByEmail, getPendingEmailAdhesions, markEmailSent } = require('./db');
+const { insertAdhesion, saveOrUpdateAdhesion, getAdhesionByPhone, getAdhesionByEmail, getAllAdhesions, exportCSV, clearAllAdhesions, deleteAdhesionById, deleteAdhesionByEmail, getPendingEmailAdhesions, markEmailSent, markEmailSending, resetEmailPending } = require('./db');
 const { sendWelcomeEmail, buildWelcomeEmailHtml } = require('./mailer');
 const { startSyncService, syncDeletePerson, syncClearAll } = require('./sync-emails');
 
@@ -231,18 +231,21 @@ const server = http.createServer(async (req, res) => {
 
         // Envoi automatique, fiable et garanti de l'email de confirmation en tâche de fond (asynchrone)
         setImmediate(() => {
+          markEmailSending(recordId);
           sendWelcomeEmail({
             prenom: data.prenom.trim(),
             nom: data.nom.trim(),
             email: cleanEmail,
           }).then(emailRes => {
             if (emailRes && emailRes.success) {
-              console.log(`[Email] ✅ Email de confirmation bien envoyé pour ${cleanEmail} (ID: ${emailRes.messageId})`);
               markEmailSent(recordId);
+              console.log(`[Email] ✅ Confirmation envoyée avec succès à ${cleanEmail} (ID #${recordId}) ✉️`);
             } else {
+              resetEmailPending(recordId);
               console.error(`[Email] ⚠️ Problème lors de l'envoi à ${cleanEmail} :`, emailRes ? emailRes.error : 'inconnu');
             }
           }).catch(emailErr => {
+            resetEmailPending(recordId);
             console.error('[Email] ❌ Erreur critique lors de l’envoi :', emailErr);
           });
         });
@@ -278,8 +281,14 @@ const server = http.createServer(async (req, res) => {
     }
     const prenom = urlObj.searchParams.get('prenom') || 'Adhérent';
     sendWelcomeEmail({ prenom, nom: 'Test', email: to })
-      .then(info => sendJson(res, 200, { success: true, messageId: info ? info.messageId : 'sent', to, smtp_user: process.env.SMTP_USER || 'non-defini' }))
-      .catch(err => sendJson(res, 500, { success: false, error: err.message, smtp_user: process.env.SMTP_USER || 'non-defini' }));
+      .then(info => {
+        if (info && info.success) {
+          return sendJson(res, 200, { success: true, messageId: info.messageId, to, provider: info.provider || 'smtp' });
+        } else {
+          return sendJson(res, 500, { success: false, error: info ? info.error : 'Erreur inconnue', to });
+        }
+      })
+      .catch(err => sendJson(res, 500, { success: false, error: err.message }));
     return;
   }
 

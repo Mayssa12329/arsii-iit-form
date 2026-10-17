@@ -35,6 +35,8 @@ const {
   getAdhesionByEmail,
   getAllAdhesions,
   markEmailSent,
+  markEmailSending,
+  resetEmailPending,
   getPendingEmailAdhesions,
   deleteAdhesionByEmail,
   deleteAdhesionById,
@@ -298,6 +300,7 @@ async function syncAndSendEmails() {
     if (pending.length > 0) {
       console.log(`[Email] 📋 ${pending.length} personne(s) en attente de mail de confirmation. Envoi en cours...`);
       for (const person of pending) {
+        markEmailSending(person.id);
         try {
           const emailRes = await sendWelcomeEmail({
             prenom: person.prenom,
@@ -325,9 +328,11 @@ async function syncAndSendEmails() {
               }).catch(() => {});
             }
           } else {
+            resetEmailPending(person.id);
             console.error(`[Email] ⚠️ Échec envoi à ${person.email} :`, emailRes ? emailRes.error : 'inconnu');
           }
         } catch (err) {
+          resetEmailPending(person.id);
           console.error(`[Email] ❌ Erreur lors de l'envoi à ${person.email} :`, err.message);
         }
         await new Promise(r => setTimeout(r, 600)); // Pause anti rate-limiting Gmail

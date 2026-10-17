@@ -17,16 +17,17 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// URLs distantes de secours (utilisées pour Brevo ou aperçu navigateur)
-const LOGO_URL              = 'https://i.imgur.com/VAeqWIg.png';
-const CAMPUS_URL            = 'https://i.imgur.com/NCic1bs.jpeg';
-const TITRE_BIENVENUE_URL   = 'https://i.imgur.com/f9i0Q1D.png';
-const BANNIERE_SLOGAN_URL   = 'https://i.imgur.com/nVoUv8N.png';
-const QR_INSTAGRAM_URL      = 'https://i.imgur.com/hd7SqUJ.png';
-const REJOINS_URL           = 'https://i.imgur.com/9EGtwtS.png';
-const BIENVENUE_AVENTURE_URL= 'https://i.imgur.com/UzlfxMp.png';
-const SIGNATURE_URL         = 'https://i.imgur.com/hnyIDef.png';
-const AVION_URL             = 'https://i.imgur.com/iWynWBE.png';
+// URLs officielles hébergées en HTTPS (accessibles partout, jamais bloquées par les filtres professionnels/universitaires)
+const PUBLIC_BASE_URL       = (process.env.RENDER_URL || 'https://arsii-iit-form.onrender.com').replace(/\/$/, '');
+const LOGO_URL              = `${PUBLIC_BASE_URL}/assets/img/logo-light.png`;
+const CAMPUS_URL            = `${PUBLIC_BASE_URL}/assets/img/iit-campus.jpg`;
+const TITRE_BIENVENUE_URL   = `${PUBLIC_BASE_URL}/assets/img/titre-bienvenue.png`;
+const BANNIERE_SLOGAN_URL   = `${PUBLIC_BASE_URL}/assets/img/banniere-slogan.png`;
+const QR_INSTAGRAM_URL      = `${PUBLIC_BASE_URL}/assets/img/qr-instagram.png`;
+const REJOINS_URL           = `${PUBLIC_BASE_URL}/assets/img/rejoins-communaute.png`;
+const BIENVENUE_AVENTURE_URL= `${PUBLIC_BASE_URL}/assets/img/bienvenue-aventure.png`;
+const SIGNATURE_URL         = `${PUBLIC_BASE_URL}/assets/img/signature-equipe.png`;
+const AVION_URL             = `${PUBLIC_BASE_URL}/assets/img/avion-papier.png`;
 
 let transporter = null;
 async function getTransporter() {
@@ -107,9 +108,9 @@ function buildWelcomeEmailHtml(prenom, useCid = false) {
 </head>
 <body style="margin:0;padding:0;background-color:#e6f6f4;font-family:'Nunito','Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
-<!-- Preheader officiel conforme pour aperçu direct en boîte de réception -->
-<div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
-  Bienvenue ${p} au Club ARSII IIT ! Ton adhésion est bien confirmée. Découvre nos projets et notre communauté.&#847; &zwnj; &nbsp; &#8199; &shy;
+<!-- Preheader officiel pour aperçu direct en boîte de réception -->
+<div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+  Bienvenue ${p} au Club ARSII IIT ! Ton adhésion est bien confirmée. Découvre nos projets et notre communauté.
 </div>
 
 <!-- Wrapper principal -->
@@ -376,6 +377,51 @@ function sendViaBrevoAPI({ apiKey, senderEmail, toEmail, toName, subject, htmlCo
   });
 }
 
+// ── Envoi via l'API HTTP Resend (port 443 HTTPS — alternative robuste sur Render) ──
+function sendViaResendAPI({ apiKey, senderEmail, toEmail, subject, htmlContent, textContent }) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      from: senderEmail,
+      to: [toEmail],
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
+    const options = {
+      hostname: 'api.resend.com',
+      path: '/emails',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+      timeout: 20000,
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            const parsed = JSON.parse(data);
+            resolve({ success: true, messageId: parsed.id || 'resend-sent' });
+          } catch (e) {
+            resolve({ success: true, messageId: 'resend-sent' });
+          }
+        } else {
+          reject(new Error(`Resend API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Resend API timeout')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 // ── Fonction principale d'envoi ──────────────────────────────────────────────
 async function sendWelcomeEmail({ prenom, nom, email }) {
   try {
@@ -407,61 +453,56 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       `Association ARSII - Institut International de Technologie (IIT Sfax)`,
     ].join('\n');
 
-    // ── PRIORITÉ 1 : API HTTP Brevo (fonctionne sur Render, port 443) ────────
-    const brevoApiKey = process.env.BREVO_API_KEY;
+    // ── PRIORITÉ 1 : API HTTP Brevo (fonctionne sur Render, port 443 HTTPS) ────
+    const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
     if (brevoApiKey) {
-      console.log(`[Email] Envoi via Brevo API HTTP -> ${cleanEmail}`);
-      const result = await sendViaBrevoAPI({
-        apiKey     : brevoApiKey,
-        senderEmail,
-        toEmail    : cleanEmail,
-        toName     : `${p} ${(nom || '').trim()}`.trim(),
-        subject,
-        htmlContent: buildWelcomeEmailHtml(prenom, false),
-        textContent,
-      });
-      console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${result.messageId}`);
-      return { success: true, messageId: result.messageId };
+      try {
+        console.log(`[Email] Envoi via Brevo API HTTP -> ${cleanEmail}`);
+        const result = await sendViaBrevoAPI({
+          apiKey     : brevoApiKey,
+          senderEmail,
+          toEmail    : cleanEmail,
+          toName     : `${p} ${(nom || '').trim()}`.trim(),
+          subject,
+          htmlContent: buildWelcomeEmailHtml(prenom, false),
+          textContent,
+        });
+        console.log(`[Email] OK (Brevo) -> ${cleanEmail} | prenom: ${p} | ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId, provider: 'brevo' };
+      } catch (brevoErr) {
+        console.error(`[Email] ⚠️ Échec Brevo API :`, brevoErr.message);
+        // Si Brevo échoue, on continue vers les fallbacks
+      }
     }
 
-    // ── FALLBACK : SMTP nodemailer (Gmail officiel avec images CID intégrées) ─
-    console.log(`[Email] Envoi optimisé anti-spam (Gmail SMTP) -> ${cleanEmail}`);
+    // ── PRIORITÉ 2 : API HTTP Resend (fonctionne sur Render, port 443 HTTPS) ────
+    const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+    if (resendApiKey) {
+      try {
+        console.log(`[Email] Envoi via Resend API HTTP -> ${cleanEmail}`);
+        const fromAddress = process.env.RESEND_FROM || `"Club ARSII IIT" <onboarding@resend.dev>`;
+        const result = await sendViaResendAPI({
+          apiKey     : resendApiKey,
+          senderEmail: fromAddress,
+          toEmail    : cleanEmail,
+          subject,
+          htmlContent: buildWelcomeEmailHtml(prenom, false),
+          textContent,
+        });
+        console.log(`[Email] OK (Resend) -> ${cleanEmail} | prenom: ${p} | ID: ${result.messageId}`);
+        return { success: true, messageId: result.messageId, provider: 'resend' };
+      } catch (resendErr) {
+        console.error(`[Email] ⚠️ Échec Resend API :`, resendErr.message);
+      }
+    }
+
+    // ── PRIORITÉ 3 : SMTP nodemailer (Gmail officiel — en local ou VPS) ────────
+    console.log(`[Email] Tentative via SMTP -> ${cleanEmail}`);
     const mailClient  = await getTransporter();
     const fromAddress = `"Club ARSII IIT" <${senderEmail}>`;
     const replyAddress = senderEmail;
 
-    // Pièces jointes CID : évite le dossier SPAM causé par les hébergeurs d'images externes
-    const imgDir = path.join(__dirname, 'assets', 'img');
-    const attachmentDefs = [
-      { cid: 'logo_img',      file: 'logo-light.png',         name: 'logo-arsii.png' },
-      { cid: 'bienvenue_img', file: 'bienvenue-aventure.png', name: 'bienvenue-aventure.png' },
-      { cid: 'campus_img',    file: 'iit-campus.jpg',         name: 'campus-iit.jpg' },
-      { cid: 'titre_img',     file: 'titre-bienvenue.png',    name: 'titre-bienvenue.png' },
-      { cid: 'slogan_img',    file: 'banniere-slogan.png',    name: 'banniere-slogan.png' },
-      { cid: 'qr_insta_img',  file: 'qr-instagram.png',       name: 'qr-instagram.png' },
-      { cid: 'rejoins_img',   file: 'rejoins-communaute.png', name: 'rejoins-communaute.png' },
-      { cid: 'signature_img', file: 'signature-equipe.png',   name: 'signature-equipe.png' },
-      { cid: 'avion_img',     file: 'avion-papier.png',       name: 'avion-papier.png' },
-    ];
-
-    const attachments = [];
-    let canUseCid = true;
-
-    for (const def of attachmentDefs) {
-      const fullPath = path.join(imgDir, def.file);
-      if (fs.existsSync(fullPath)) {
-        attachments.push({
-          filename: def.name,
-          path: fullPath,
-          cid: def.cid,
-          contentDisposition: 'inline',
-        });
-      } else {
-        canUseCid = false;
-      }
-    }
-
-    const htmlToSend = buildWelcomeEmailHtml(prenom, canUseCid);
+    const htmlToSend = buildWelcomeEmailHtml(prenom, false);
 
     const info = await mailClient.sendMail({
       from   : fromAddress,
@@ -470,21 +511,13 @@ async function sendWelcomeEmail({ prenom, nom, email }) {
       subject,
       text   : textContent,
       html   : htmlToSend,
-      attachments: canUseCid ? attachments : [],
-      headers: {
-        'X-Mailer': 'Club ARSII IIT Mailer System',
-        'X-Entity-Ref-ID': `arsii-${Date.now()}-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '')}`,
-        'X-Auto-Response-Suppress': 'OOF, AutoReply',
-        'List-Id': '<club-arsii-iit.sfax>',
-        'Feedback-ID': `adhesion:club-arsii:gmail`,
-      },
     });
 
-    console.log(`[Email] OK -> ${cleanEmail} | prenom: ${p} | ID: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+    console.log(`[Email] OK (SMTP) -> ${cleanEmail} | prenom: ${p} | ID: ${info.messageId}`);
+    return { success: true, messageId: info.messageId, provider: 'smtp' };
 
   } catch (err) {
-    console.error(`[Email] ERREUR -> ${email} :`, err.message);
+    console.error(`[Email] ERREUR GLOBALE -> ${email} :`, err.message);
     return { success: false, error: err.message };
   }
 }

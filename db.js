@@ -224,6 +224,20 @@ function markEmailSent(id) {
   syncCsvBackup();
 }
 
+function markEmailSending(id) {
+  try {
+    const stmt = db.prepare('UPDATE adhesions SET email_sent = 2 WHERE id = ?');
+    stmt.run(id);
+  } catch (e) {}
+}
+
+function resetEmailPending(id) {
+  try {
+    const stmt = db.prepare('UPDATE adhesions SET email_sent = 0 WHERE id = ?');
+    stmt.run(id);
+  } catch (e) {}
+}
+
 module.exports = {
   db,
   insertAdhesion,
@@ -234,6 +248,8 @@ module.exports = {
   getAllAdhesions,
   getPendingEmailAdhesions,
   markEmailSent,
+  markEmailSending,
+  resetEmailPending,
   deleteAdhesionById,
   deleteAdhesionByEmail,
   clearAllAdhesions,
