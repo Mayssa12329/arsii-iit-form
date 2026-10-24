@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // URLs officielles hébergées en HTTPS (accessibles partout, jamais bloquées par les filtres professionnels/universitaires)
-const PUBLIC_BASE_URL       = (process.env.RENDER_URL || 'https://arsii-iit-form.onrender.com').replace(/\/$/, '');
+const PUBLIC_BASE_URL       = (process.env.CLOUD_URL || process.env.RENDER_URL || 'https://arsii-iit-form-jy0q.onrender.com').replace(/\/$/, '');
 const LOGO_URL              = `${PUBLIC_BASE_URL}/assets/img/logo-light.png`;
 const CAMPUS_URL            = `${PUBLIC_BASE_URL}/assets/img/iit-campus.jpg`;
 const TITRE_BIENVENUE_URL   = `${PUBLIC_BASE_URL}/assets/img/titre-bienvenue.png`;
