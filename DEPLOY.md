@@ -12,7 +12,36 @@ Ce guide explique étape par étape comment rendre le formulaire d'adhésion pub
 
 ---
 
-## 🌐 Méthode 1 (Recommandée & Gratuite) : Déploiement sur Render.com
+## 🚀 Méthode 1 (Recommandée & 100% Gratuite — 100 Go de bande passante) : Koyeb.com
+
+Koyeb est la meilleure alternative à Render pour les formulaires de club :
+- **100 Go de bande passante gratuite/mois** (20× plus que Render).
+- **Pas de suspension surprise** pour quota dépassé.
+- **HTTPS automatique gratuit** et réseau mondial ultra-rapide.
+
+### Déploiement en 3 minutes sur Koyeb :
+1. Rendez-vous sur [koyeb.com](https://app.koyeb.com/) et connectez-vous avec votre compte GitHub.
+2. Cliquez sur **Create Service** (ou **Create App**).
+3. Sélectionnez **GitHub** puis choisissez votre dépôt **`Mayssa12329/arsii-iit-form`**.
+4. Koyeb détecte automatiquement le projet avec notre **Dockerfile** (Node 22) :
+   - **Service name** : `arsii-iit-form`
+   - **Instance type** : `Free` (Nano)
+   - **Region** : Frankfurt (`fra`) ou Paris (`par`)
+5. Dans la section **Ports** :
+   - Vérifiez que le port interne est bien **`3000`** avec protocole **`HTTP`** et chemin **`/`**.
+6. Dans la section **Environment variables**, ajoutez les 5 variables secrètes :
+   - `SMTP_SERVICE` = `gmail`
+   - `SMTP_USER` = `arsii.iit189@gmail.com`
+   - `SMTP_PASS` = `ypji muzb fbyi qowf`
+   - `SMTP_FROM` = `"Club ARSII IIT" <arsii.iit189@gmail.com>`
+   - `ADMIN_KEY` = `arsii_bureau_2026` *(ou votre clé secrète)*
+7. Cliquez sur **Deploy**.
+8. Votre formulaire est en ligne avec son adresse permanente sécurisée :
+   👉 **`https://arsii-iit-form-XXXX.koyeb.app`**
+
+---
+
+## 🌐 Méthode 2 : Déploiement sur Render.com
 
 Render est la solution cloud la plus simple et moderne avec HTTPS automatique gratuit.
 
