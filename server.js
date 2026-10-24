@@ -189,13 +189,14 @@ const server = http.createServer(async (req, res) => {
           id: recordId,
         });
 
-        // Stockage simultané et immédiat sur Render si en local
-        if (!process.env.RENDER && process.env.RENDER_URL) {
+        // Stockage simultané et immédiat sur le serveur distant si en local
+        const cloudUrl = (process.env.CLOUD_URL || process.env.KOYEB_URL || process.env.RENDER_URL || '').trim().replace(/\/$/, '');
+        const isCloudEnv = !!(process.env.RENDER || process.env.KOYEB || process.env.NODE_ENV === 'production');
+        if (!isCloudEnv && cloudUrl) {
           setImmediate(() => {
             try {
               const https = require('https');
               const http = require('http');
-              const renderUrl = process.env.RENDER_URL.replace(/\/$/, '');
               const postData = JSON.stringify({
                 nom: data.nom.trim(),
                 prenom: data.prenom.trim(),
@@ -209,7 +210,7 @@ const server = http.createServer(async (req, res) => {
                 source: data.source || '',
                 _isSync: true,
               });
-              const parsed = new URL(`${renderUrl}/api/adhesions`);
+              const parsed = new URL(`${cloudUrl}/api/adhesions`);
               const mod = parsed.protocol === 'https:' ? https : http;
               const reqRender = mod.request({
                 hostname: parsed.hostname,
@@ -474,8 +475,9 @@ server.listen(PORT, () => {
   console.log(`Club ARSII IIT Formulaire disponible sur http://localhost:${PORT}`);
   console.log(`Base de données active : data/adhesions.db`);
 
-  // Lancement automatique et transparent de la synchronisation Render ↔ Local et de l'envoi garanti des emails
-  if (!process.env.RENDER) {
+  // Lancement automatique et transparent de la synchronisation Cloud ↔ Local uniquement en développement local
+  const isCloud = !!(process.env.RENDER || process.env.KOYEB || process.env.NODE_ENV === 'production');
+  if (!isCloud) {
     startSyncService();
   }
 });

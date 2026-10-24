@@ -45,10 +45,12 @@ const {
 
 const { sendWelcomeEmail } = require('./mailer');
 
-// ── Configuration ────────────────────────────────────────────────────────────
-const RENDER_URL       = (process.env.RENDER_URL || '').trim().replace(/\/$/, '');
+// URL du serveur distant (Koyeb, Render ou Cloud quelconque)
+const CLOUD_URL        = (process.env.CLOUD_URL || process.env.KOYEB_URL || process.env.RENDER_URL || '').trim().replace(/\/$/, '');
+const RENDER_URL       = CLOUD_URL;
 const ADMIN_KEY        = (process.env.ADMIN_KEY || '').trim();
-const SYNC_INTERVAL_MS = 5 * 1000; // Vérification toutes les 5 secondes
+// Intervalle de synchronisation (par défaut 2 minutes pour préserver la bande passante et éviter les blocages de Render)
+const SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MS, 10) || 120 * 1000;
 
 // ── Utilitaires HTTP ──────────────────────────────────────────────────────────
 function fetchJson(urlStr) {
@@ -196,7 +198,7 @@ async function syncAndSendEmails() {
                 motivation: rPerson.motivation || '',
                 interets  : rPerson.interets || '',
                 source    : rPerson.source || '',
-                email_sent: rPerson.email_sent !== undefined ? rPerson.email_sent : 0,
+                email_sent: rPerson.email_sent === 1 ? 1 : 0,
               });
               newFromRender++;
               console.log(`[Sync Render ➔ Local] ➕ Nouvel inscrit importé : ${rPerson.prenom} ${rPerson.nom} (${rPerson.email})`);
@@ -231,7 +233,7 @@ async function syncAndSendEmails() {
                     motivation: rPerson.motivation || '',
                     interets  : rPerson.interets || '',
                     source    : rPerson.source || '',
-                    email_sent: rPerson.email_sent !== undefined ? rPerson.email_sent : lPerson.email_sent,
+                    email_sent: (rPerson.email_sent === 1 || lPerson.email_sent === 1) ? 1 : 0,
                   });
                   updatedCount++;
                   console.log(`[Sync Render ➔ Local] 🔄 Mise à jour locale (Render plus récent) : ${rPerson.prenom} ${rPerson.nom} (${email})`);
@@ -248,6 +250,7 @@ async function syncAndSendEmails() {
                     motivation: lPerson.motivation || '',
                     interets  : lPerson.interets || '',
                     source    : lPerson.source || '',
+                    email_sent: lPerson.email_sent === 1 ? 1 : 0,
                     _isSync   : true,
                   });
                   updatedCount++;
@@ -256,8 +259,23 @@ async function syncAndSendEmails() {
               }
 
               // Synchronisation du statut email_sent
-              if (rPerson.email_sent === 1 && (lPerson.email_sent === 0 || !lPerson.email_sent)) {
+              if (rPerson.email_sent === 1 && lPerson.email_sent !== 1) {
                 markEmailSent(lPerson.id);
+              } else if (lPerson.email_sent === 1 && rPerson.email_sent !== 1) {
+                postJson(`${RENDER_URL}/api/adhesions`, {
+                  nom       : lPerson.nom,
+                  prenom    : lPerson.prenom,
+                  email     : lPerson.email,
+                  telephone : lPerson.telephone,
+                  niveau    : lPerson.niveau,
+                  filiere   : lPerson.filiere,
+                  annee     : lPerson.annee,
+                  motivation: lPerson.motivation || '',
+                  interets  : lPerson.interets || '',
+                  source    : lPerson.source || '',
+                  email_sent: 1,
+                  _isSync   : true,
+                }).catch(() => {});
               }
             }
           }
@@ -324,6 +342,7 @@ async function syncAndSendEmails() {
                 motivation: person.motivation || '',
                 interets  : person.interets || '',
                 source    : person.source || '',
+                email_sent: 1,
                 _isSync   : true,
               }).catch(() => {});
             }

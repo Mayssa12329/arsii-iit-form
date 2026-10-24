@@ -44,6 +44,9 @@ async function getTransporter() {
       secure: port === 465,
       auth: { user, pass },
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
     console.log(`[Email] SMTP via host ${process.env.SMTP_HOST}:${port} (${user})`);
   } else {
@@ -51,6 +54,9 @@ async function getTransporter() {
       service,
       auth: { user, pass },
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
     console.log(`[Email] SMTP via ${service} (${user})`);
   }

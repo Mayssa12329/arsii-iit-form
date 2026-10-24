@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
+const { spawn } = require('child_process');
 
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -10,6 +11,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const DB_PATH = path.join(DATA_DIR, 'adhesions.db');
 const JSON_BACKUP_PATH = path.join(DATA_DIR, 'adhesions.json');
 const CSV_BACKUP_PATH = path.join(DATA_DIR, 'adhesions.csv');
+const SCRIPT_EXCEL_PATH = path.join(__dirname, 'generate_excel.py');
 
 const db = new DatabaseSync(DB_PATH);
 
@@ -41,6 +43,17 @@ try {
   // La colonne existe déjà, c'est normal
 }
 
+// Garantir que TOUT email stocké dans la base sans confirmation confirmée (email_sent != 1) est mis en attente d'envoi
+try {
+  const resetRes = db.prepare('UPDATE adhesions SET email_sent = 0 WHERE email_sent != 1 OR email_sent IS NULL').run();
+  if (resetRes.changes > 0) {
+    console.log(`[DB] 🔄 ${resetRes.changes} email(s) sans confirmation remis en attente d'envoi immédiat.`);
+    syncJsonBackup();
+    syncCsvBackup();
+    syncExcelBackup();
+  }
+} catch (e) {}
+
 function syncJsonBackup() {
   try {
     const rows = getAllAdhesions();
@@ -58,6 +71,51 @@ function syncCsvBackup() {
   } catch (err) {
     console.error('Erreur lors de la sauvegarde CSV :', err);
   }
+}
+
+let excelSyncTimer = null;
+let isExcelRunning = false;
+let pendingExcelRun = false;
+
+function syncExcelBackup() {
+  if (excelSyncTimer) clearTimeout(excelSyncTimer);
+  excelSyncTimer = setTimeout(() => {
+    runExcelGenerator();
+  }, 400);
+}
+
+function runExcelGenerator() {
+  if (isExcelRunning) {
+    pendingExcelRun = true;
+    return;
+  }
+  isExcelRunning = true;
+
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const child = spawn(pythonCmd, [SCRIPT_EXCEL_PATH], {
+    cwd: __dirname,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+
+  child.on('error', (err) => {
+    isExcelRunning = false;
+    if (pendingExcelRun) {
+      pendingExcelRun = false;
+      syncExcelBackup();
+    }
+  });
+
+  child.on('exit', (code) => {
+    isExcelRunning = false;
+    if (code === 0) {
+      console.log('[Excel Sync] 📊 Fichier Excel adhesions_arsii.xlsx synchronisé automatiquement.');
+    }
+    if (pendingExcelRun) {
+      pendingExcelRun = false;
+      syncExcelBackup();
+    }
+  });
 }
 
 function insertAdhesion(data) {
@@ -87,6 +145,7 @@ function insertAdhesion(data) {
 
   syncJsonBackup();
   syncCsvBackup();
+  syncExcelBackup();
 
   return {
     id: info.lastInsertRowid,
@@ -156,6 +215,7 @@ function deleteAdhesionById(id) {
   stmt.run(id);
   syncJsonBackup();
   syncCsvBackup();
+  syncExcelBackup();
 }
 
 function deleteAdhesionByEmail(email) {
@@ -164,6 +224,7 @@ function deleteAdhesionByEmail(email) {
   stmt.run(email.trim().toLowerCase());
   syncJsonBackup();
   syncCsvBackup();
+  syncExcelBackup();
 }
 
 function clearAllAdhesions() {
@@ -173,6 +234,7 @@ function clearAllAdhesions() {
   } catch (e) {}
   syncJsonBackup();
   syncCsvBackup();
+  syncExcelBackup();
 }
 
 function saveOrUpdateAdhesion(data) {
@@ -205,6 +267,7 @@ function saveOrUpdateAdhesion(data) {
     );
     syncJsonBackup();
     syncCsvBackup();
+    syncExcelBackup();
     return { id: existing.id, isUpdate: true, created_at: updatedAt };
   } else {
     const res = insertAdhesion(data);
@@ -213,7 +276,7 @@ function saveOrUpdateAdhesion(data) {
 }
 
 function getPendingEmailAdhesions() {
-  const stmt = db.prepare('SELECT * FROM adhesions WHERE email_sent = 0 OR email_sent IS NULL ORDER BY id ASC');
+  const stmt = db.prepare('SELECT * FROM adhesions WHERE email_sent != 1 OR email_sent IS NULL ORDER BY id ASC');
   return stmt.all();
 }
 
@@ -222,6 +285,7 @@ function markEmailSent(id) {
   stmt.run(id);
   syncJsonBackup();
   syncCsvBackup();
+  syncExcelBackup();
 }
 
 function markEmailSending(id) {
@@ -254,5 +318,6 @@ module.exports = {
   deleteAdhesionByEmail,
   clearAllAdhesions,
   exportCSV,
+  syncExcelBackup,
 };
 
